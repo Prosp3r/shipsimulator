@@ -6,25 +6,30 @@ import (
 	"io"
 	"net"
 	"os"
+	"time"
 
 	"github.com/adrianmo/go-nmea"
 )
 
 // readData will read the file by name provided,
-// and call the nmea parser line by line.
-func readData(conn net.Conn, f io.Reader) error {
+// and call the parse function for each line read.
+func readData(conn net.Conn, f io.Reader, delay int) error {
 
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
-		err := parse(scanner.Text(), conn)
-		if err != nil {
-			return err
-		}
+		<-time.After(time.Duration(delay) * time.Millisecond)
+		go func() {
+			err := parse(scanner.Text(), conn)
+			if err != nil {
+				return
+			}
+		}()
 	}
 
 	return nil
 }
 
+// parse will parse the NMEA data out of the text line read.
 func parse(nmeaText string, conn net.Conn) error {
 	sentence, err := nmea.Parse(nmeaText)
 	if err != nil {
@@ -42,7 +47,12 @@ func parse(nmeaText string, conn net.Conn) error {
 	return nil
 }
 
-func Run(nmeaFile string, address string) error {
+// Run will start the parsing and sending process,
+// and takes the full path of the file to parse,
+// the address:port of the host to connect to,
+// and a delay in milliseconds to wait between
+// each iteration of line in the file.
+func Run(nmeaFile string, address string, delay int) error {
 
 	// Open the network connection to the receiver
 	conn, err := net.Dial("tcp", address)
@@ -59,7 +69,7 @@ func Run(nmeaFile string, address string) error {
 	defer f.Close()
 
 	// Start the reading and sending
-	err = readData(conn, f)
+	err = readData(conn, f, delay)
 	if err != nil {
 		return err
 	}
