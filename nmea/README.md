@@ -11,4 +11,6 @@ Can be found in this repository located under\
 
 ## References
 
+To generate routes use the tool on the web page below.
+
 <https://nmeagen.org/>
