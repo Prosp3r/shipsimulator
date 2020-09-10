@@ -18,12 +18,11 @@ import (
 func readData(conn net.Conn, f io.Reader, delay int) error {
 
 	scanner := bufio.NewScanner(f)
-	ticker := time.NewTicker(time.Duration(delay) * time.Millisecond)
+	ticker := time.NewTicker(time.Duration(delay) * time.Microsecond)
 
-	for t := range ticker.C {
+	for range ticker.C {
 		// Check if there are more to scan
 		if scanner.Scan() {
-			fmt.Printf("ticker : %v\n", t)
 			err := parse(scanner.Text(), conn)
 			if err != nil {
 				return err
@@ -61,9 +60,9 @@ func parse(nmeaText string, conn net.Conn) error {
 // Run will start the parsing and sending process,
 // and takes the full path of the file to parse,
 // the address:port of the host to connect to,
-// and a delay in milliseconds to wait between
-// each iteration of line in the file.
-func Run(nmeaFile string, address string, delay int) error {
+// and a delay as an int in milliseconds to wait
+// between each iteration of line in the file.
+func Run(nmeaFile string, address string, delay int, loop bool) error {
 
 	// Open the network connection to the receiver
 	conn, err := net.Dial("tcp", address)
@@ -72,17 +71,24 @@ func Run(nmeaFile string, address string, delay int) error {
 	}
 	defer conn.Close()
 
-	// Open the nmea file for reading
-	f, err := os.Open(nmeaFile)
-	if err != nil {
-		return fmt.Errorf("error: failed to open nmea file for reading: %v", err)
-	}
-	defer f.Close()
+	for {
+		// Open the nmea file for reading
+		f, err := os.Open(nmeaFile)
+		if err != nil {
+			return fmt.Errorf("error: failed to open nmea file for reading: %v", err)
+		}
 
-	// Start the reading and sending
-	err = readData(conn, f, delay)
-	if err != nil {
-		return err
+		// Start the reading and sending
+		err = readData(conn, f, delay)
+		if err != nil {
+			return err
+		}
+
+		f.Close()
+
+		if !loop {
+			break
+		}
 	}
 
 	return nil
