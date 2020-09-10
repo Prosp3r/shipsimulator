@@ -13,20 +13,29 @@ import (
 
 // readData will read the file by name provided,
 // and call the parse function for each line read.
+// A time ticker have been used to schedule the reading of
+// lines from the file at given intervals.
 func readData(conn net.Conn, f io.Reader, delay int) error {
 
 	scanner := bufio.NewScanner(f)
-	for scanner.Scan() {
-		<-time.After(time.Duration(delay) * time.Millisecond)
-		go func() {
+	ticker := time.NewTicker(time.Duration(delay) * time.Millisecond)
+
+	for t := range ticker.C {
+		// Check if there are more to scan
+		if scanner.Scan() {
+			fmt.Printf("ticker : %v\n", t)
 			err := parse(scanner.Text(), conn)
 			if err != nil {
-				return
+				return err
 			}
-		}()
+		} else {
+			break
+		}
+
 	}
 
 	return nil
+
 }
 
 // parse will parse the NMEA data out of the text line read.
@@ -36,6 +45,8 @@ func parse(nmeaText string, conn net.Conn) error {
 		return fmt.Errorf("error: failed to parse nmea sentence: %v", err)
 	}
 
+	// Send over the network connection to the receiver
+	// if the data read is of the correct type.
 	if sentence.DataType() == nmea.TypeRMC {
 		rmc := sentence.(nmea.RMC).String() + "\n"
 
