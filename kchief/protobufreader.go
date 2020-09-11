@@ -20,15 +20,17 @@ import (
 //				|- []Payload
 //					|- []TagDataPoints
 //						|- TAG, the actual string representation of the tag name
-//						|- []DataPoint
+//						|- []DataPoints
 //							|- Timestamp
 //							|- Value
 
-// readPBMessag will read the protobuf binary file from disk,
-// unmarshall the Message struct from the proto spesification,
-// unzip the
-func readPBMessage() error {
-	b, err := ioutil.ReadFile("./sample/sample2.bin")
+// RunProtoReader will start the process, and read the protobuf binary
+// file from disk, unmarshall the Message struct from the
+// proto spesification, unzip the Data, then iterate through
+// the structure described above to get the TAG, Timestamp
+// and value fields.
+func RunProtoReader(filename string) error {
+	b, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return fmt.Errorf("error: readData, os.Open failed %v", err)
 	}
@@ -37,18 +39,21 @@ func readPBMessage() error {
 	message := messagingpb.Message{}
 	err = proto.Unmarshal(b, &message)
 	if err != nil {
-		log.Printf("error: failed Unmarshal Message: %v\n", err)
+		return fmt.Errorf("error: failed Unmarshal Message: %v", err)
 	}
 
 	// Get the compressed content of the field Data,
 	// and uncompress it.
-	dataUncompressed := getDataFieldFromMessage(message)
+	dataUncompressed, err := getDataFieldFromMessage(message)
+	if err != nil {
+		return err
+	}
 
 	// unmarshal Payloads from Data.
 	payloads := messagingpb.Payloads{}
 	err = proto.Unmarshal(dataUncompressed, &payloads)
 	if err != nil {
-		log.Printf("error: failed Unmarshal Message: %v\n", err)
+		return fmt.Errorf("error: failed Unmarshal Message: %v", err)
 	}
 
 	getPayload(payloads)
@@ -58,7 +63,7 @@ func readPBMessage() error {
 
 // getDataField uncompresses the compress field Data in
 // message, and returns the result.
-func getDataFieldFromMessage(message messagingpb.Message) []byte {
+func getDataFieldFromMessage(message messagingpb.Message) ([]byte, error) {
 
 	// The Data field in the Message struct contains
 	// compress data that we need to decompress.
@@ -67,7 +72,7 @@ func getDataFieldFromMessage(message messagingpb.Message) []byte {
 
 	gzipReader, err := gzip.NewReader(dataCompressedReader)
 	if err != nil {
-		log.Printf("error: gzip newreader failed: %v\n", err)
+		return nil, fmt.Errorf("error: gzip newreader failed: %v", err)
 	}
 
 	dataUncompressed, err := ioutil.ReadAll(gzipReader)
@@ -75,7 +80,7 @@ func getDataFieldFromMessage(message messagingpb.Message) []byte {
 		log.Printf("error: readall gzipReader failed: %v\n", err)
 	}
 
-	return dataUncompressed
+	return dataUncompressed, nil
 }
 
 // getPayload iterates over all the Payloads,
@@ -86,7 +91,7 @@ func getPayload(payloads messagingpb.Payloads) {
 		// fmt.Printf("index %v : %#v\n", i, v.GetTagdatapoints())
 		vv := v.GetTagdatapoints()
 		for _, v := range vv {
-			fmt.Printf("*TAG* : %v\n", v.Tag)
+			fmt.Printf("*TAG* : type=%T, %v\n", v.Tag, v.Tag)
 		}
 
 		getDataPoint(v.GetTagdatapoints())
@@ -97,17 +102,9 @@ func getDataPoint(tagDataPoints []*messagingpb.TagDataPoints) {
 	for _, v := range tagDataPoints {
 		dataPoint := v.GetDatapoints()
 		for _, v := range dataPoint {
-			fmt.Printf("*TIMESTAMP : %v\n", v.Timestamp)
-			fmt.Printf("*VALUE* : %v\n", v.Value[0])
+			fmt.Printf("*TIMESTAMP : type=%T, %v\n", v.Timestamp, v.Timestamp)
+			fmt.Printf("*VALUE* : type=%T, %v\n", v.Value[0], v.Value[0])
 
 		}
 	}
-}
-
-func Run() error {
-	err := readPBMessage()
-	if err != nil {
-		return err
-	}
-	return nil
 }

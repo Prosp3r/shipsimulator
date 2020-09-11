@@ -7,7 +7,9 @@ import (
 )
 
 func main() {
-	if err := kchief.Run(); err != nil {
-		log.Println(err)
+	err := kchief.RunProtoGenerator()
+	if err != nil {
+		log.Printf("%v\n", err)
 	}
+
 }
