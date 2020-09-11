@@ -11,6 +11,19 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
+// The structure seems to be as follows
+//
+// File, containing protobuf
+//	|- Message
+//		|- Data, which is in binary format compressed with gzip
+//			|- Payloads, which is an array unzipped from Data above
+//				|- []Payload
+//					|- []TagDataPoints
+//						|- TAG, the actual string representation of the tag name
+//						|- []DataPoint
+//							|- Timestamp
+//							|- Value
+
 func readPBMessage() error {
 	b, err := ioutil.ReadFile("./sample/sample2.bin")
 	if err != nil {
@@ -18,17 +31,15 @@ func readPBMessage() error {
 	}
 
 	// The main protobuf message seems to be in .Message
-	m := messagingpb.Message{}
-	err = proto.Unmarshal(b, &m)
+	message := messagingpb.Message{}
+	err = proto.Unmarshal(b, &message)
 	if err != nil {
 		log.Printf("error: failed Unmarshal Message: %v\n", err)
 	}
 
-	// fmt.Printf("%#v", m)
-
 	// Message for a field called Data which seems to be compress with gzip.
-	mData := m.GetData()
-	dataReader := bytes.NewReader(mData)
+	messageData := message.GetData()
+	dataReader := bytes.NewReader(messageData)
 
 	gzipReader, err := gzip.NewReader(dataReader)
 	if err != nil {
@@ -49,27 +60,32 @@ func readPBMessage() error {
 		log.Printf("error: failed Unmarshal Message: %v\n", err)
 	}
 
-	tagDataPoints := []*messagingpb.TagDataPoints{}
-	for i, v := range payloads.Payloads {
-		fmt.Printf("index %v : %#v\n", i, v.GetTagdatapoints())
-		vv := v.GetTagdatapoints()
-		for i, v := range vv {
-			fmt.Printf("inner index %v : %v\n", i, v.Tag)
-
-		}
-		tagDataPoints = append(tagDataPoints, v.GetTagdatapoints()...)
-	}
-
-	for _, v := range tagDataPoints {
-		dataPoint := v.GetDatapoints()
-		for i, v := range dataPoint {
-			fmt.Printf("index %v : %#v\n", i, v.Timestamp)
-			fmt.Printf("index %v : %v\n", i, v.Value[0])
-
-		}
-	}
+	getPayloads(payloads)
 
 	return nil
+}
+
+func getPayloads(payloads messagingpb.Payloads) {
+	for _, v := range payloads.Payloads {
+		// fmt.Printf("index %v : %#v\n", i, v.GetTagdatapoints())
+		vv := v.GetTagdatapoints()
+		for _, v := range vv {
+			fmt.Printf("*TAG* : %v\n", v.Tag)
+		}
+
+		getDataPoint(v.GetTagdatapoints())
+	}
+}
+
+func getDataPoint(tagDataPoints []*messagingpb.TagDataPoints) {
+	for _, v := range tagDataPoints {
+		dataPoint := v.GetDatapoints()
+		for _, v := range dataPoint {
+			fmt.Printf("*TIMESTAMP : %v\n", v.Timestamp)
+			fmt.Printf("*VALUE* : %v\n", v.Value[0])
+
+		}
+	}
 }
 
 func Run() error {
