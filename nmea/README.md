@@ -34,8 +34,6 @@ Start a generator that will generate and send packages every 500ms
 
 `go run ./cmd/nmeagenerator/main.go --delay=500000 --file=../cmd/nmeagenerator/output.nmea`
 
-
-
 ## References
 
 To generate routes use the tool on the web page below.
