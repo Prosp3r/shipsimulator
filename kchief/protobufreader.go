@@ -11,6 +11,9 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
+// TODO:
+// Make looping with time specific delay
+
 // The structure seems to be as follows
 //
 // File, containing protobuf
