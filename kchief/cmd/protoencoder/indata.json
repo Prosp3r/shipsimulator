@@ -1,11 +1,11 @@
 {
     "dataPoints": [{
-            "tagName": "tag nr 1",
+            "tagName": "KONGE-TAG-NR-1",
             "value": 1.1
         },
         {
-            "tagName": "tag nr 2",
-            "value": 2.2
+            "tagName": "KONGE-TAG-NR-2",
+            "value": -2.2
         }
     ]
 }

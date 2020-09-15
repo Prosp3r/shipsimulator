@@ -25,37 +25,66 @@ import (
 //						|- []DataPoints
 //							|- Timestamp
 //							|- Value
+//
+// INFO: Each tag that are represented in the protobuf are represented as an
+// individual Payload in the the Payloads slice.
+//
+// The structure of the Payloads
+//
+// payloads := messagingpb.Payloads{
+// 	Payloads: []*messagingpb.Payload{
+// 		{
+// 			Tagdatapoints: []*messagingpb.TagDataPoints{
+// 				{
+// 					Tag: "apekatt",
+// 					Datapoints: []*messagingpb.DataPoint{
+// 						{
+// 							Timestamp: ptypes.TimestampNow(),
+// 							Value:     []float64{3.14},
+// 						},
+// 					},
+// 				},
+// 			},
+// 		},
+// 	},
+// }
 
+// RunProtoEncode will loop over the TagDataPoints specified in the JSON file
+// given as input, and create TagDataPoints for each of them, put them in a
+// Payload struct, and add each one to the Payloads slice.
 func RunProtoEncode(fileName string, inJsonFile string) error {
 	inDataPoints, err := readJsonInFile(inJsonFile)
 	if err != nil {
 		log.Printf("error: read inJson failed: %v\n", err)
 	}
 
-	fmt.Println(inDataPoints)
-
 	// ----------------------marshal payloads---------------------------
 
-	payloads := messagingpb.Payloads{
-		Payloads: []*messagingpb.Payload{
+	payloadsSlice := []*messagingpb.Payload{}
+
+	for _, v := range inDataPoints.DataPoints {
+		tdp := []*messagingpb.TagDataPoints{
 			{
-				Tagdatapoints: []*messagingpb.TagDataPoints{
+				Tag: v.TagName,
+				Datapoints: []*messagingpb.DataPoint{
 					{
-						Tag: "apekatt",
-						Datapoints: []*messagingpb.DataPoint{
-							{
-								Timestamp: ptypes.TimestampNow(),
-								Value:     []float64{3.14},
-							},
-						},
+						Timestamp: ptypes.TimestampNow(),
+						Value:     []float64{v.Value},
 					},
 				},
 			},
-		},
+		}
+		pl := &messagingpb.Payload{}
+		pl.Tagdatapoints = append(pl.Tagdatapoints, tdp...)
+		payloadsSlice = append(payloadsSlice, pl)
+	}
+
+	payloadsStruct := messagingpb.Payloads{
+		Payloads: payloadsSlice,
 	}
 
 	// marshall the inner Payloads structure to protobuf format.
-	b, err := proto.Marshal(&payloads)
+	b, err := proto.Marshal(&payloadsStruct)
 	if err != nil {
 		log.Printf("error: marshaling proto: %v\n", err)
 	}
@@ -165,7 +194,7 @@ func writeProtoFile(messageProto []byte, fileName string) error {
 		n, err := fh.Write(messageProto)
 		fmt.Println(n, err)
 		if err == nil {
-			log.Printf("info: successfully wrote the data to file: %v\n", err)
+			log.Printf("info: successfully wrote the data to file=%v :error=%v\n", fileName, err)
 			break
 		}
 

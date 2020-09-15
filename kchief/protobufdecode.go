@@ -90,10 +90,17 @@ func getDataFieldFromMessage(message messagingpb.Message) ([]byte, error) {
 // then for each respective payload it finds
 // the TAG name, and the corresponding TagdataPoint.
 func getPayload(payloads messagingpb.Payloads) {
+	// payloadsCounter := 0
+
 	for _, v := range payloads.Payloads {
+		// fmt.Printf("*** Payloads Counter = %v\n", payloadsCounter)
+		// payloadsCounter++
+		// tagDataPointsCounter := 0
 		// fmt.Printf("index %v : %#v\n", i, v.GetTagdatapoints())
 		vv := v.GetTagdatapoints()
 		for _, v := range vv {
+			// fmt.Printf("*** TagData Counter = %v\n", tagDataPointsCounter)
+			// tagDataPointsCounter++
 			fmt.Printf("*TAG* : type=%T, %v\n", v.Tag, v.Tag)
 		}
 
