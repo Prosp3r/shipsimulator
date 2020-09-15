@@ -6,6 +6,10 @@
         {
             "tagName": "KONGE-TAG-NR-2",
             "value": -2.2
+        },
+        {
+            "tagName": "SIGBJØRNTAG",
+            "value": 1
         }
     ]
 }
