@@ -1,3 +1,8 @@
+/*
+	Decode a file containing protobuf binary data into
+	it's protobuf structure
+*/
+
 package main
 
 import (

@@ -9,6 +9,7 @@ import (
 
 	"github.com/RaaLabs/shipsimulator/kchief/messagingpb"
 	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/ptypes"
 )
 
 // The structure seems to be as follows
@@ -24,7 +25,7 @@ import (
 //							|- Timestamp
 //							|- Value
 
-func RunProtoGenerator() error {
+func RunProtoEncode(fileName string) error {
 
 	// ----------------------marshal payloads---------------------------
 
@@ -36,7 +37,7 @@ func RunProtoGenerator() error {
 						Tag: "apekatt",
 						Datapoints: []*messagingpb.DataPoint{
 							{
-								Timestamp: nil,
+								Timestamp: ptypes.TimestampNow(),
 								Value:     []float64{3.14},
 							},
 						},
@@ -92,7 +93,7 @@ func RunProtoGenerator() error {
 	fmt.Printf("message : %v\n", messageProto)
 
 	// Write the protobuf data to file for now...
-	err = writeProtoFile(messageProto)
+	err = writeProtoFile(messageProto, fileName)
 	if err != nil {
 		return fmt.Errorf("error: writeProtofile failed: %v", err)
 	}
@@ -101,8 +102,8 @@ func RunProtoGenerator() error {
 }
 
 // writeProtoFile will write the protobuf data to disk
-func writeProtoFile(messageProto []byte) error {
-	fh, err := os.Create("output-ape.bin")
+func writeProtoFile(messageProto []byte, fileName string) error {
+	fh, err := os.Create(fileName)
 	if err != nil {
 		log.Printf("error: os create failed: %v\n", err)
 	}
