@@ -3,6 +3,7 @@ package kchief
 import (
 	"bytes"
 	"compress/gzip"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -25,7 +26,13 @@ import (
 //							|- Timestamp
 //							|- Value
 
-func RunProtoEncode(fileName string) error {
+func RunProtoEncode(fileName string, inJsonFile string) error {
+	inDataPoints, err := readJsonInFile(inJsonFile)
+	if err != nil {
+		log.Printf("error: read inJson failed: %v\n", err)
+	}
+
+	fmt.Println(inDataPoints)
 
 	// ----------------------marshal payloads---------------------------
 
@@ -99,6 +106,51 @@ func RunProtoEncode(fileName string) error {
 	}
 
 	return nil
+}
+
+type inDataPoints struct {
+	DataPoints []inDataPoint `json:"dataPoints"`
+}
+type inDataPoint struct {
+	TagName string  `json:"tagName"`
+	Value   float64 `json:"value"`
+}
+
+// readJsonInFile will read the json file,
+// unmarshal the data read, and return the structure.
+//
+// NB: The timestamps have been ommited from the json
+// structure, and are generated on the fly while doing
+// the protobuf structure later
+//
+// The struture of the JSON file
+//
+// {
+//     "dataPoints": [{
+//             "tagName": "tag nr 1",
+//             "value": 1.1
+//         },
+//         {
+//             "tagName": "tag nr 2",
+//             "value": 2.2
+//         }
+//     ]
+// }
+func readJsonInFile(fileName string) (inDataPoints, error) {
+	dps := inDataPoints{}
+
+	fh, err := os.Open(fileName)
+	if err != nil {
+		return inDataPoints{}, fmt.Errorf("error: failed to open JSON file for reading: %v", err)
+	}
+
+	jsonDecoder := json.NewDecoder(fh)
+	err = jsonDecoder.Decode(&dps)
+	if err != nil {
+		return inDataPoints{}, fmt.Errorf("error: decoding json failed: %v", err)
+	}
+
+	return dps, nil
 }
 
 // writeProtoFile will write the protobuf data to disk

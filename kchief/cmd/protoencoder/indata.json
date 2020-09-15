@@ -1,0 +1,11 @@
+{
+    "dataPoints": [{
+            "tagName": "tag nr 1",
+            "value": 1.1
+        },
+        {
+            "tagName": "tag nr 2",
+            "value": 2.2
+        }
+    ]
+}
