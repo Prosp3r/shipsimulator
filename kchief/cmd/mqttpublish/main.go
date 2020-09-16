@@ -30,6 +30,8 @@ func NewMQTTClient(protocol string, address string, port string, clientID string
 	return c, nil
 }
 
+// publish will start the publishing to the MQTT queue,
+// and it will take the input to publish via the msgCh.
 func publish(c mqtt.Client, topic string, msgCh chan interface{}) {
 	for {
 		// Create a string with the data to publish to broker
@@ -39,6 +41,8 @@ func publish(c mqtt.Client, topic string, msgCh chan interface{}) {
 	}
 }
 
+// inFileFlags allows us to use several --inFile flags
+// when starting the program.
 type inFileFlags []string
 
 func (i *inFileFlags) String() string {
@@ -50,10 +54,15 @@ func (i *inFileFlags) Set(value string) error {
 	return nil
 }
 
+// inFileData represents the data of one of the files
+// to read from giv'en as input.
 type inFileData struct {
 	bytes []byte
 }
 
+// getInFileData loops over the inFileFlags, reads the data
+// of each individual file, appends the data in byte format
+// to a slice, and returns it to the caller.
 func getInFileData(fileNames inFileFlags) ([]inFileData, error) {
 	inFilesData := []inFileData{}
 	for _, v := range fileNames {
@@ -92,6 +101,7 @@ func main() {
 
 	flag.Parse()
 
+	// Check if inFiles for reading have been specified.
 	if len(inFile) == 0 {
 		fmt.Printf("no input files, use the --inFile flag to specify one or mores files to use as input.\n")
 		return
@@ -107,17 +117,10 @@ func main() {
 	}
 	defer client.Disconnect(250)
 
-	// // Subscribe to topic,
-	// // subscribe will also print the result to console.
-	// err = subscribe(client, *topic)
-	// if err != nil {
-	// 	log.Printf("error: mqtt client subscribe failed: %v\n", err)
-	// 	return
-	// }
-
+	// Create a channel to put the messages we want to publish.
 	msgCh := make(chan interface{})
 
-	//start publish'er
+	// Start publish'er
 	go publish(client, *topic, msgCh)
 
 	inFilesData, err := getInFileData(inFile)
@@ -133,11 +136,5 @@ func main() {
 			time.Sleep(time.Millisecond * time.Duration(*delay))
 		}
 	}
-
-	// err = unSubscribe(client, *topic)
-	// if err != nil {
-	// 	log.Printf("error: mqtt client unSubscribe failed: %v\n", err)
-	// 	return
-	// }
 
 }
