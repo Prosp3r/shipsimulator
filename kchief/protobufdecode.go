@@ -35,7 +35,7 @@ import (
 func RunProtoReader(filename string) error {
 	b, err := ioutil.ReadFile(filename)
 	if err != nil {
-		return fmt.Errorf("error: readData, os.Open failed %v", err)
+		return fmt.Errorf("error: ReadFile failed %v", err)
 	}
 
 	// unmarshall the Message struct from the protobuf raw data

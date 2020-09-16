@@ -49,8 +49,8 @@ func subscribe(c mqtt.Client, topic string) error {
 func publish(c mqtt.Client, topic string, msgCh chan interface{}) {
 	for {
 		// Create a string with the data to publish to broker
-		text := fmt.Sprintf("this is msg #%v!", <-msgCh)
-		token := c.Publish(topic, 0, false, text)
+		// text := fmt.Sprintf("this is msg #%v!", <-msgCh)
+		token := c.Publish(topic, 0, false, <-msgCh)
 		token.Wait()
 	}
 }
@@ -108,7 +108,7 @@ func main() {
 	broker := flag.String("broker", "10.0.0.26", "The ip address of the MQTT broker")
 	port := flag.String("port", "1883", "The port where the MQTT broker listens")
 	protocol := flag.String("protocol", "tcp", "The protocol to use when connecting to the MQTT broker")
-	clientID := flag.String("clientID", "btclient", "The client ID to use with MQTT")
+	clientID := flag.String("clientID", "btclient1", "The client ID to use with MQTT")
 	var inFile inFileFlags
 	flag.Var(&inFile, "inFile", "specify the files to use as input comma separated")
 	repetitions := flag.Int("repetitions", 1, "specify how many repetitions to run")
@@ -131,13 +131,13 @@ func main() {
 	}
 	defer client.Disconnect(250)
 
-	// Subscribe to topic,
-	// subscribe will also print the result to console.
-	err = subscribe(client, *topic)
-	if err != nil {
-		log.Printf("error: mqtt client subscribe failed: %v\n", err)
-		return
-	}
+	// // Subscribe to topic,
+	// // subscribe will also print the result to console.
+	// err = subscribe(client, *topic)
+	// if err != nil {
+	// 	log.Printf("error: mqtt client subscribe failed: %v\n", err)
+	// 	return
+	// }
 
 	msgCh := make(chan interface{})
 
@@ -158,10 +158,10 @@ func main() {
 		}
 	}
 
-	err = unSubscribe(client, *topic)
-	if err != nil {
-		log.Printf("error: mqtt client unSubscribe failed: %v\n", err)
-		return
-	}
+	// err = unSubscribe(client, *topic)
+	// if err != nil {
+	// 	log.Printf("error: mqtt client unSubscribe failed: %v\n", err)
+	// 	return
+	// }
 
 }
