@@ -21,7 +21,7 @@ func NewMQTTClient(protocol string, address string, port string, clientID string
 	opts.SetKeepAlive(2 * time.Second)
 	opts.SetPingTimeout(1 * time.Second)
 
-	// Create the connection to the broker
+	// Create the connection to the broker.
 	c := mqtt.NewClient(opts)
 	if token := c.Connect(); token.Wait() && token.Error() != nil {
 		return nil, token.Error()
@@ -30,8 +30,7 @@ func NewMQTTClient(protocol string, address string, port string, clientID string
 	return c, nil
 }
 
-// -- HERE
-
+// fileNR keeps track of the numbering of output files.
 type fileNR struct {
 	number int
 }
@@ -52,6 +51,7 @@ func newMessageHandler() func(client mqtt.Client, msg mqtt.Message) {
 	// for what to do with the message, we declare such a
 	// function to print out the messages we receive.
 	messageHandler := func(client mqtt.Client, msg mqtt.Message) {
+		// Create and open a file with next running number
 		fileName := fmt.Sprintf("out%v.bin", fn.number)
 		f, err := os.Create(fileName)
 		if err != nil {
@@ -60,18 +60,16 @@ func newMessageHandler() func(client mqtt.Client, msg mqtt.Message) {
 		}
 		defer f.Close()
 
-		fmt.Println("*** entering handler", fn.number)
-		fmt.Printf("*** Got message *** [%s] %0b\n", msg.Topic(), msg.Payload())
-
+		// Write the Protobuf data to the file.
 		n, err := f.Write(msg.Payload())
 		if err != nil {
 			log.Printf("error: writing to file: %v\n", err)
 			log.Printf("info: characters written: %v\n", n)
 		}
-		log.Printf("info: characters written: %v\n", n)
 
 		fn.number++
 	}
+
 	return messageHandler
 }
 
@@ -103,13 +101,12 @@ func main() {
 	port := flag.String("port", "1883", "The port where the MQTT broker listens")
 	protocol := flag.String("protocol", "tcp", "The protocol to use when connecting to the MQTT broker")
 	clientID := flag.String("clientID", "btclient2", "The client ID to use with MQTT")
-	// outFile := flag.String("outFile", "", "The name of the file to write output to")
 
 	flag.Parse()
 
 	var err error
 
-	// Create new mqtt client
+	// Create new mqtt client.
 	client, err := NewMQTTClient(*protocol, *broker, *port, *clientID)
 	if err != nil {
 		log.Printf("error: newMQTTClient failed: %v\n", err)
@@ -125,12 +122,14 @@ func main() {
 		return
 	}
 
+	// Wait for someone to press CTRL+C.
 	fmt.Println("started subscriber")
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
 	<-c
 	fmt.Println("stopped subscriber")
 
+	// Stop subscribing to MQTT messages.
 	err = unSubscribe(client, *topic)
 	if err != nil {
 		log.Printf("error: mqtt client unSubscribe failed: %v\n", err)
