@@ -74,6 +74,10 @@ func (i *arrayFlags) Set(value string) error {
 	return nil
 }
 
+type inFileData struct {
+	bytes []byte
+}
+
 func main() {
 	topic := flag.String("topic", "CloudBoundContainer", "The name of the MQTT topic")
 	broker := flag.String("broker", "10.0.0.26", "The ip address of the MQTT broker")
@@ -88,7 +92,7 @@ func main() {
 	flag.Parse()
 
 	if len(inFile) == 0 {
-		fmt.Printf("no input files, use the --protoFiles flag to specify one or mores files to use as input.\n")
+		fmt.Printf("no input files, use the --inFile flag to specify one or mores files to use as input.\n")
 		return
 	}
 
@@ -115,24 +119,39 @@ func main() {
 	//start publish'er
 	go publish(client, *topic, msgCh)
 
+	//get the binary data from the files
+	inFilesData := []inFileData{}
+
+	for _, v := range inFile {
+		fmt.Printf("v contains : %v\n", v)
+		fh, err := os.Open(v)
+		if err != nil {
+			log.Printf("error: failed to open protoFile: %v\n", err)
+			return
+		}
+
+		b, err := ioutil.ReadAll(fh)
+		if err != nil {
+			log.Printf("error: file ReadAll failed: %v\n", err)
+		}
+
+		d := inFileData{
+			bytes: b,
+		}
+
+		inFilesData = append(inFilesData, d)
+		fh.Close()
+
+	}
+
+	fmt.Printf("*** %#v\n", len(inFilesData))
+
 	// send some data to the publisher channel
 	for i := 0; i < *repetitions; i++ {
 		fmt.Printf("protoFiles contains : %#v\n", inFile)
-		for _, v := range inFile {
-			fmt.Printf("v contains : %v\n", v)
-			fh, err := os.Open(v)
-			if err != nil {
-				log.Printf("error: failed to open protoFile: %v\n", err)
-				return
-			}
+		for _, v := range inFilesData {
 
-			b, err := ioutil.ReadAll(fh)
-			if err != nil {
-				log.Printf("error: file ReadAll failed: %v\n", err)
-			}
-			fh.Close()
-
-			msgCh <- b
+			msgCh <- v.bytes
 			time.Sleep(time.Millisecond * time.Duration(*delay))
 		}
 	}
