@@ -67,6 +67,8 @@ func newMessageHandler() func(client mqtt.Client, msg mqtt.Message) {
 			log.Printf("info: characters written: %v\n", n)
 		}
 
+		fmt.Printf("\n *** Info: Total packages received now are: %v\n\n", fn.number)
+
 		fn.number++
 	}
 
