@@ -30,22 +30,6 @@ func NewMQTTClient(protocol string, address string, port string, clientID string
 	return c, nil
 }
 
-func subscribe(c mqtt.Client, topic string) error {
-	// Since the Subscribe method uses a callback function
-	// for what to do with the message, we declare such a
-	// method to print out the messages we receive.
-	messageHandler := func(client mqtt.Client, msg mqtt.Message) {
-		fmt.Printf("*** Got message *** [%s] %s\n", msg.Topic(), string(msg.Payload()))
-	}
-
-	// Start the consuming of the topic
-	if token := c.Subscribe(topic, 0, messageHandler); token.Wait() && token.Error() != nil {
-		return token.Error()
-	}
-
-	return nil
-}
-
 func publish(c mqtt.Client, topic string, msgCh chan interface{}) {
 	for {
 		// Create a string with the data to publish to broker
@@ -53,14 +37,6 @@ func publish(c mqtt.Client, topic string, msgCh chan interface{}) {
 		token := c.Publish(topic, 0, false, <-msgCh)
 		token.Wait()
 	}
-}
-
-// unSubscribe will unsubscribe the client from the topic
-func unSubscribe(c mqtt.Client, topic string) error {
-	if token := c.Unsubscribe(topic); token.Wait() && token.Error() != nil {
-		return token.Error()
-	}
-	return nil
 }
 
 type inFileFlags []string
