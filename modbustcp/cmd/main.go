@@ -268,3 +268,13 @@ func (eh *reqHandler) HandleInputRegisters(req *modbus.InputRegistersRequest) (r
 
 	return res, nil
 }
+
+type modbusData struct {
+	// Set to 1 if the data value contains only 1 single 16bit value
+	// Set to 2 if the data value contains f.ex. a float32
+	valueSize int
+	// valueTypes:
+	// float
+	// WORD
+	valueType string
+}
