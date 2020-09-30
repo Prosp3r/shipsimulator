@@ -20,6 +20,7 @@ Bit access:
 - Write Multiple Holding Registers
 
 TCP and serial RTU access is supported.
+Also added support for RTU over TCP.
 
 The server internally allocates memory for 65536 coils, 65536 discrete inputs, 653356 holding registers and 65536 input registers.
 On start, all values are initialzied to zero.  Modbus requests are processed in the order they are received and will not overlap/interfere with each other.

@@ -26,6 +26,7 @@ import (
 )
 
 func main() {
+	// Start a new server
 	serv := mbserver.NewServer()
 	err := serv.ListenRTUTCP(":5502")
 	if err != nil {
@@ -35,8 +36,9 @@ func main() {
 
 	// Create a new registry builder to specific
 	// registry data like postions in slice etc.
-	const startReg int = 0 // TODO: Replace this with parsed start value from input
+	const startReg int = 100 // TODO: Replace this with parsed start value from input
 
+	// Create some input data to fill the register
 	registryData := []encoder{
 		float32LittleWordBigEndian{
 			number: 3.1415,
