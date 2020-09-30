@@ -1,5 +1,0 @@
-package modbustcp
-
-func Run() {
-
-}
