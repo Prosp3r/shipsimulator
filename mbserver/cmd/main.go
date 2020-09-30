@@ -22,7 +22,7 @@ import (
 
 func main() {
 	serv := mbserver.NewServer()
-	err := serv.ListenTCP(":5502")
+	err := serv.ListenRTUTCP(":5502")
 	if err != nil {
 		log.Printf("%v\n", err)
 	}
