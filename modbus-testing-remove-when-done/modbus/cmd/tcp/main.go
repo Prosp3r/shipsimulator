@@ -30,7 +30,7 @@ func main() {
 
 	serverConfig := modbus.ServerConfiguration{
 		// listen on localhost port 5502
-		URL: "tcp://10.0.0.129:502",
+		URL: "tcp://10.0.0.129:5502",
 		// close idle connections after 30s of inactivity
 		Timeout: 30 * time.Second,
 		// accept 5 concurrent connections max.
@@ -267,14 +267,4 @@ func (eh *reqHandler) HandleInputRegisters(req *modbus.InputRegistersRequest) (r
 	}
 
 	return res, nil
-}
-
-type modbusData struct {
-	// Set to 1 if the data value contains only 1 single 16bit value
-	// Set to 2 if the data value contains f.ex. a float32
-	valueSize int
-	// valueTypes:
-	// float
-	// WORD
-	valueType string
 }
