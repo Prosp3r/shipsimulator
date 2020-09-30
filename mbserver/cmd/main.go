@@ -16,6 +16,7 @@ package main
 
 import (
 	"encoding/binary"
+	"encoding/json"
 	"fmt"
 	"log"
 	"math"
@@ -38,16 +39,40 @@ func main() {
 	// registry data like postions in slice etc.
 	const startReg int = 100 // TODO: Replace this with parsed start value from input
 
-	// Create some input data to fill the register
-	registryData := []encoder{
-		float32LittleWordBigEndian{
-			number: 3.1415,
-			size:   2,
-		},
-		float32BigWordBigEndian{
-			number: 3.141516,
-			size:   2,
-		},
+	// // Create some input data to fill the register
+	// registryData := []encoder{
+	// 	float32LittleWordBigEndian{
+	// 		Type:   "float32LittleWordBigEndian",
+	// 		Number: 3.1415,
+	// 		Size:   2,
+	// 	},
+	// 	float32BigWordBigEndian{
+	// 		Type:   "float32BigWordBigEndian",
+	// 		Number: 3.141516,
+	// 		Size:   2,
+	// 	},
+	// }
+
+	js := []byte(`[{
+		"type":"float32LittleWordBigEndian",
+		"number":3.1415,
+		"size":2
+	}, {
+		"type":"float32BigWordBigEndian",
+		"number":3.141516,
+		"size":2
+		}]`)
+
+	objs := []map[string]interface{}{}
+	err = json.Unmarshal(js, &objs)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var registryData []encoder
+
+	for _, obj := range objs {
+		registryData = append(registryData, NewEncoder(obj))
 	}
 
 	// setRegister will set the values into the register
@@ -96,67 +121,75 @@ type encoder interface {
 }
 
 type float32LittleWordBigEndian struct {
-	number float32
+	Type   string
+	Number float64
 	// size in the measure of uint16's.
 	// E.g. a float32 contains 2 x uint16's,
 	// so the size will be 2.
-	size int
+	Size float64
 }
 
 // encode will encode a float32 value into []uint16 where:
 //	- The two 16 bits word are little endian
 //	- The Byte order of each word a big endian
 func (f float32LittleWordBigEndian) encode() []uint16 {
-	v1 := uint16((math.Float32bits(f.number) >> 16) & 0xffff)
-	v2 := uint16((math.Float32bits(f.number)) & 0xffff)
+	n := float32(f.Number)
+	v1 := uint16((math.Float32bits(n) >> 16) & 0xffff)
+	v2 := uint16((math.Float32bits(n)) & 0xffff)
 	fmt.Printf("*v1 = %v*\n", v1)
 	return []uint16{v2, v1}
 }
 
 func (f float32LittleWordBigEndian) getSize() int {
-	return f.size
+	n := int(f.Size)
+	return n
 }
 
 // -------
 
 type float32BigWordBigEndian struct {
-	number float32
+	Type   string
+	Number float64
 	// size in the measure of uint16's.
 	// E.g. a float32 contains 2 x uint16's,
 	// so the size will be 2.
-	size int
+	Size float64
 }
 
 // encode will encode a float32 value into []uint16 where:
 //	- The two 16 bits word are little endian
 //	- The Byte order of each word a big endian
 func (f float32BigWordBigEndian) encode() []uint16 {
-	v1 := uint16((math.Float32bits(f.number) >> 16) & 0xffff)
-	v2 := uint16((math.Float32bits(f.number)) & 0xffff)
+	n := float32(f.Number)
+	v1 := uint16((math.Float32bits(n) >> 16) & 0xffff)
+	v2 := uint16((math.Float32bits(n)) & 0xffff)
 	fmt.Printf("*v1 = %v*\n", v1)
 	return []uint16{v1, v2}
 }
 
 func (f float32BigWordBigEndian) getSize() int {
-	return f.size
+	n := int(f.Size)
+	return n
 }
 
 // -------
 
 type float32LittleWordLittleEndian struct {
-	number float32
+	Type   string
+	Number float64
 	// size in the measure of uint16's.
 	// E.g. a float32 contains 2 x uint16's,
 	// so the size will be 2.
-	size int
+	Size float64
 }
 
 // encode will encode a float32 value into []uint16 where:
 //	- The two 16 bits word are little endian
 //	- The Byte order of each word a big endian
 func (f float32LittleWordLittleEndian) encode() []uint16 {
-	v1 := uint16((math.Float32bits(f.number) >> 16) & 0xffff)
-	v2 := uint16((math.Float32bits(f.number)) & 0xffff)
+	n := float32(f.Number)
+	v1 := uint16((math.Float32bits(n) >> 16) & 0xffff)
+	v2 := uint16((math.Float32bits(n)) & 0xffff)
 	fmt.Printf("*v1 = %v*\n", v1)
 
 	v1 = uint16ToLittleEndian(v1)
@@ -165,25 +198,28 @@ func (f float32LittleWordLittleEndian) encode() []uint16 {
 }
 
 func (f float32LittleWordLittleEndian) getSize() int {
-	return f.size
+	n := int(f.Size)
+	return n
 }
 
 // -------
 
 type float32BigWordLittleEndian struct {
-	number float32
+	Type   string
+	Number float64
 	// size in the measure of uint16's.
 	// E.g. a float32 contains 2 x uint16's,
 	// so the size will be 2.
-	size int
+	Size float64
 }
 
 // encode will encode a float32 value into []uint16 where:
 //	- The two 16 bits word are little endian
 //	- The Byte order of each word a big endian
 func (f float32BigWordLittleEndian) encode() []uint16 {
-	v1 := uint16((math.Float32bits(f.number) >> 16) & 0xffff)
-	v2 := uint16((math.Float32bits(f.number)) & 0xffff)
+	n := float32(f.Number)
+	v1 := uint16((math.Float32bits(n) >> 16) & 0xffff)
+	v2 := uint16((math.Float32bits(n)) & 0xffff)
 	fmt.Printf("*v1 = %v*\n", v1)
 
 	v1 = uint16ToLittleEndian(v1)
@@ -192,48 +228,117 @@ func (f float32BigWordLittleEndian) encode() []uint16 {
 }
 
 func (f float32BigWordLittleEndian) getSize() int {
-	return f.size
+	n := int(f.Size)
+	return n
 }
 
 // -------
 
 type wordInt16BigEndian struct {
-	number int16
+	Type   string
+	Number float64
 	// size in the measure of uint16's.
 	// E.g. a float32 contains 2 x uint16's,
 	// so the size will be 2.
-	size int
+	Size float64
 }
 
 func (w wordInt16BigEndian) encode() []uint16 {
-	v := uint16(w.number)
+	v := uint16(w.Number)
 
 	return []uint16{v}
 }
 
 func (f wordInt16BigEndian) getSize() int {
-	return f.size
+	return int(f.Size)
 }
 
 // -------
 
 type wordInt16LittleEndian struct {
-	number int16
+	Type   string
+	Number float64
 	// size in the measure of uint16's.
 	// E.g. a float32 contains 2 x uint16's,
 	// so the size will be 2.
-	size int
+	Size float64
 }
 
 func (w wordInt16LittleEndian) encode() []uint16 {
-	v := uint16(w.number)
+	v := uint16(w.Number)
 	v = uint16ToLittleEndian(v)
 
 	return []uint16{v}
 }
 
 func (f wordInt16LittleEndian) getSize() int {
-	return f.size
+	return int(f.Size)
 }
 
 // -------------------------------------------------------------------------
+
+func NewEncoder(m map[string]interface{}) encoder {
+	switch m["type"].(string) {
+	case "float32LittleWordBigEndian":
+		return NewFloat32LittleWordBigEndian(m)
+	case "float32BigWordBigEndian":
+		return NewFloat32BigWordBigEndian(m)
+	case "float32LittleWordLittleEndian":
+		return NewFloat32LittleWordLittleEndian(m)
+	case "float32BigWordLittleEndian":
+		return NewFloat32BigWordLittleEndian(m)
+	case "wordInt16BigEndian":
+		return NewWordInt16BigEndian(m)
+	case "wordInt16LittleEndian":
+		return NewWordInt16LittleEndian(m)
+	}
+	return nil
+}
+
+func NewFloat32LittleWordBigEndian(m map[string]interface{}) *float32LittleWordBigEndian {
+	return &float32LittleWordBigEndian{
+		Type:   m["type"].(string),
+		Number: m["number"].(float64),
+		Size:   m["size"].(float64),
+	}
+}
+
+func NewFloat32BigWordBigEndian(m map[string]interface{}) *float32BigWordBigEndian {
+	return &float32BigWordBigEndian{
+		Type:   m["type"].(string),
+		Number: m["number"].(float64),
+		Size:   m["size"].(float64),
+	}
+}
+
+func NewFloat32LittleWordLittleEndian(m map[string]interface{}) *float32LittleWordLittleEndian {
+	return &float32LittleWordLittleEndian{
+		Type:   m["type"].(string),
+		Number: m["number"].(float64),
+		Size:   m["size"].(float64),
+	}
+}
+
+func NewFloat32BigWordLittleEndian(m map[string]interface{}) *float32BigWordLittleEndian {
+	return &float32BigWordLittleEndian{
+		Type:   m["type"].(string),
+		Number: m["number"].(float64),
+		Size:   m["size"].(float64),
+	}
+}
+
+func NewWordInt16BigEndian(m map[string]interface{}) *wordInt16BigEndian {
+	return &wordInt16BigEndian{
+		Type:   m["type"].(string),
+		Number: m["number"].(float64),
+		Size:   m["size"].(float64),
+	}
+}
+
+func NewWordInt16LittleEndian(m map[string]interface{}) *wordInt16LittleEndian {
+	return &wordInt16LittleEndian{
+		Type:   m["type"].(string),
+		Number: m["number"].(float64),
+		Size:   m["size"].(float64),
+	}
+}
