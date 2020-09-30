@@ -5,6 +5,11 @@
 	Float (2 x uint16) can have endianess swapped at :
 	- byte level within a word.
 	- word level where each of the uint16's have swapped place.
+
+	References :
+	https://control.com/forums/threads/confused-modbus-tcp-vs-modbus-rtu-over-tcp.37377/
+	https://www.simplymodbus.ca/TCP.htm
+	https://modbus.org/docs/Modbus_Application_Protocol_V1_1b3.pdf
 */
 
 package main
