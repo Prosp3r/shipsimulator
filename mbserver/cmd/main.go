@@ -35,6 +35,7 @@
 
 	TODO:
 	- Keep an array of used address of a register to dectect possible overlaps by errors in provided in JSON config file ?
+	- Select what listeners to start, like RTU TCP, Modbus TCP.
 */
 
 package main
@@ -52,7 +53,7 @@ import (
 	"github.com/RaaLabs/shipsimulator/mbserver"
 )
 
-type functionRegisterFiles struct {
+type config struct {
 	name string
 	fh   *os.File
 }
@@ -68,48 +69,49 @@ func main() {
 
 	// The configuration is split in 4 files, 1 for each register
 	fileNames := []string{"coil.json", "descrete.json", "input.json", "holding.json"}
-	var fhs []functionRegisterFiles
 
 	// Iterate over all the filenames specified, and create a holding
 	// structure to keep all the file handles in, with info about each
 	// register.
-	for _, v := range fileNames {
-		fh, err := os.Open(v)
+	for _, fileName := range fileNames {
+		fh, err := os.Open(fileName)
 		if err != nil {
-			log.Printf("error: failed to open config file for %v: %v\n", v, err)
+			log.Printf("error: failed to open config file for %v: %v\n", fileName, err)
+			continue
 		}
 
 		// split out the prefix .json, and get the filename.
-		fName := strings.Split(v, ".")
-		f := functionRegisterFiles{
-			name: fName[0],
+		name := strings.Split(fileName, ".")
+		config := config{
+			name: name[0],
 			fh:   fh,
 		}
-		fhs = append(fhs, f)
 		defer fh.Close()
+
+		// Since we are using the routine to unmarshall the JSON, and
+		// we want it unmarshaled into different types, we use a map
+		// with string key and empty interface to store the data values.
+		// The converting to the real type it represents is handled in
+		// the repsective types Encode method when being called upon.
+		//
+		configFromFile := []map[string]interface{}{}
+		js := json.NewDecoder(config.fh)
+		err = js.Decode(&configFromFile)
+		//err = json.Unmarshal(js, &objs)
+		if err != nil {
+			log.Printf("error: decoding json: %v\n", err)
+		}
+
+		var registryData []encoder
+
+		for _, obj := range configFromFile {
+			registryData = append(registryData, NewEncoder(obj))
+		}
+
+		// setRegister will set the values into the register
+		setRegister(serv, registryData)
+
 	}
-
-	// Since we are using the routine to unmarshall the JSON, and
-	// we want it unmarshaled into different types, we use an
-	// empty interface to store the data values.
-	// The converting to the real type it represents is handled in
-	// the repsective types Encode method when being called upon.
-	objs := []map[string]interface{}{}
-	js := json.NewDecoder(fhs[3].fh)
-	err = js.Decode(&objs)
-	//err = json.Unmarshal(js, &objs)
-	if err != nil {
-		log.Printf("error: decoding json: %v\n", err)
-	}
-
-	var registryData []encoder
-
-	for _, obj := range objs {
-		registryData = append(registryData, NewEncoder(obj))
-	}
-
-	// setRegister will set the values into the register
-	setRegister(serv, registryData)
 
 	// Wait for someone to press CTRL+C.
 	fmt.Println("Press ctrl+c to stop")
