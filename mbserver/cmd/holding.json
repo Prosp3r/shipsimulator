@@ -1,9 +1,11 @@
 [{
     "type": "float32LittleWordBigEndian",
     "number": 3.1415,
-    "size": 2
+    "size": 2,
+    "regAddr": 100
 }, {
     "type": "float32BigWordBigEndian",
     "number": 3.141516,
-    "size": 2
+    "size": 2,
+    "regAddr": 102
 }]

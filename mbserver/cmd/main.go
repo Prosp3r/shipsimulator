@@ -32,6 +32,9 @@
 	https://control.com/forums/threads/confused-modbus-tcp-vs-modbus-rtu-over-tcp.37377/
 	https://www.simplymodbus.ca/TCP.htm
 	https://modbus.org/docs/Modbus_Application_Protocol_V1_1b3.pdf
+
+	TODO:
+	- Keep an array of used address of a register to dectect possible overlaps by errors in provided in JSON config file ?
 */
 
 package main
@@ -63,16 +66,12 @@ func main() {
 	}
 	defer serv.Close()
 
-	// Create a new registry builder to specific
-	// registry data like postions in slice etc.
-	const startReg int = 100 // TODO: Replace this with parsed start value from input
-
 	// The configuration is split in 4 files, 1 for each register
 	fileNames := []string{"coil.json", "descrete.json", "input.json", "holding.json"}
 	var fhs []functionRegisterFiles
 
 	// Iterate over all the filenames specified, and create a holding
-	// strcuture to keep all the file handles in with info about each
+	// structure to keep all the file handles in, with info about each
 	// register.
 	for _, v := range fileNames {
 		fh, err := os.Open(v)
@@ -80,6 +79,7 @@ func main() {
 			log.Printf("error: failed to open config file for %v: %v\n", v, err)
 		}
 
+		// split out the prefix .json, and get the filename.
 		fName := strings.Split(v, ".")
 		f := functionRegisterFiles{
 			name: fName[0],
@@ -88,6 +88,12 @@ func main() {
 		fhs = append(fhs, f)
 		defer fh.Close()
 	}
+
+	// Since we are using the routine to unmarshall the JSON, and
+	// we want it unmarshaled into different types, we use an
+	// empty interface to store the data values.
+	// The converting to the real type it represents is handled in
+	// the repsective types Encode method when being called upon.
 	objs := []map[string]interface{}{}
 	js := json.NewDecoder(fhs[3].fh)
 	err = js.Decode(&objs)
@@ -103,7 +109,7 @@ func main() {
 	}
 
 	// setRegister will set the values into the register
-	setRegister(serv, registryData, startReg)
+	setRegister(serv, registryData)
 
 	// Wait for someone to press CTRL+C.
 	fmt.Println("Press ctrl+c to stop")
@@ -125,14 +131,9 @@ func uint16ToLittleEndian(u uint16) uint16 {
 }
 
 // setRegister will set the values into the register.
-// Will also take the starting position of the register.
-func setRegister(serv *mbserver.Server, registryData []encoder, regPos int) error {
+func setRegister(serv *mbserver.Server, registryData []encoder) error {
 	for _, v := range registryData {
-
-		serv.HoldingRegisters = append(serv.HoldingRegisters[:regPos], v.encode()...)
-
-		valueSize := 2
-		regPos = regPos + valueSize
+		serv.HoldingRegisters = append(serv.HoldingRegisters[:v.Address()], v.Encode()...)
 	}
 
 	return nil
@@ -143,23 +144,20 @@ func setRegister(serv *mbserver.Server, registryData []encoder, regPos int) erro
 // encoder represent any value type that can be encoded
 // into a []uint16 as a response back to the modbus request.
 type encoder interface {
-	encode() []uint16
-	getSize() int
+	Encode() []uint16
+	Address() int
 }
 
 type float32LittleWordBigEndian struct {
-	Type   string
-	Number float64
-	// size in the measure of uint16's.
-	// E.g. a float32 contains 2 x uint16's,
-	// so the size will be 2.
-	Size float64
+	Type    string
+	Number  float64
+	RegAddr float64
 }
 
 // encode will encode a float32 value into []uint16 where:
 //	- The two 16 bits word are little endian
 //	- The Byte order of each word a big endian
-func (f float32LittleWordBigEndian) encode() []uint16 {
+func (f float32LittleWordBigEndian) Encode() []uint16 {
 	n := float32(f.Number)
 	v1 := uint16((math.Float32bits(n) >> 16) & 0xffff)
 	v2 := uint16((math.Float32bits(n)) & 0xffff)
@@ -167,26 +165,23 @@ func (f float32LittleWordBigEndian) encode() []uint16 {
 	return []uint16{v2, v1}
 }
 
-func (f float32LittleWordBigEndian) getSize() int {
-	n := int(f.Size)
+func (f float32LittleWordBigEndian) Address() int {
+	n := int(f.RegAddr)
 	return n
 }
 
 // -------
 
 type float32BigWordBigEndian struct {
-	Type   string
-	Number float64
-	// size in the measure of uint16's.
-	// E.g. a float32 contains 2 x uint16's,
-	// so the size will be 2.
-	Size float64
+	Type    string
+	Number  float64
+	RegAddr float64
 }
 
 // encode will encode a float32 value into []uint16 where:
 //	- The two 16 bits word are little endian
 //	- The Byte order of each word a big endian
-func (f float32BigWordBigEndian) encode() []uint16 {
+func (f float32BigWordBigEndian) Encode() []uint16 {
 	n := float32(f.Number)
 	v1 := uint16((math.Float32bits(n) >> 16) & 0xffff)
 	v2 := uint16((math.Float32bits(n)) & 0xffff)
@@ -194,26 +189,23 @@ func (f float32BigWordBigEndian) encode() []uint16 {
 	return []uint16{v1, v2}
 }
 
-func (f float32BigWordBigEndian) getSize() int {
-	n := int(f.Size)
+func (f float32BigWordBigEndian) Address() int {
+	n := int(f.RegAddr)
 	return n
 }
 
 // -------
 
 type float32LittleWordLittleEndian struct {
-	Type   string
-	Number float64
-	// size in the measure of uint16's.
-	// E.g. a float32 contains 2 x uint16's,
-	// so the size will be 2.
-	Size float64
+	Type    string
+	Number  float64
+	RegAddr float64
 }
 
 // encode will encode a float32 value into []uint16 where:
 //	- The two 16 bits word are little endian
 //	- The Byte order of each word a big endian
-func (f float32LittleWordLittleEndian) encode() []uint16 {
+func (f float32LittleWordLittleEndian) Encode() []uint16 {
 	n := float32(f.Number)
 	v1 := uint16((math.Float32bits(n) >> 16) & 0xffff)
 	v2 := uint16((math.Float32bits(n)) & 0xffff)
@@ -224,26 +216,23 @@ func (f float32LittleWordLittleEndian) encode() []uint16 {
 	return []uint16{v2, v1}
 }
 
-func (f float32LittleWordLittleEndian) getSize() int {
-	n := int(f.Size)
+func (f float32LittleWordLittleEndian) Address() int {
+	n := int(f.RegAddr)
 	return n
 }
 
 // -------
 
 type float32BigWordLittleEndian struct {
-	Type   string
-	Number float64
-	// size in the measure of uint16's.
-	// E.g. a float32 contains 2 x uint16's,
-	// so the size will be 2.
-	Size float64
+	Type    string
+	Number  float64
+	RegAddr float64
 }
 
 // encode will encode a float32 value into []uint16 where:
 //	- The two 16 bits word are little endian
 //	- The Byte order of each word a big endian
-func (f float32BigWordLittleEndian) encode() []uint16 {
+func (f float32BigWordLittleEndian) Encode() []uint16 {
 	n := float32(f.Number)
 	v1 := uint16((math.Float32bits(n) >> 16) & 0xffff)
 	v2 := uint16((math.Float32bits(n)) & 0xffff)
@@ -254,52 +243,46 @@ func (f float32BigWordLittleEndian) encode() []uint16 {
 	return []uint16{v2, v1}
 }
 
-func (f float32BigWordLittleEndian) getSize() int {
-	n := int(f.Size)
+func (f float32BigWordLittleEndian) Address() int {
+	n := int(f.RegAddr)
 	return n
 }
 
 // -------
 
 type wordInt16BigEndian struct {
-	Type   string
-	Number float64
-	// size in the measure of uint16's.
-	// E.g. a float32 contains 2 x uint16's,
-	// so the size will be 2.
-	Size float64
+	Type    string
+	Number  float64
+	RegAddr float64
 }
 
-func (w wordInt16BigEndian) encode() []uint16 {
+func (w wordInt16BigEndian) Encode() []uint16 {
 	v := uint16(w.Number)
 
 	return []uint16{v}
 }
 
-func (f wordInt16BigEndian) getSize() int {
-	return int(f.Size)
+func (f wordInt16BigEndian) Address() int {
+	return int(f.RegAddr)
 }
 
 // -------
 
 type wordInt16LittleEndian struct {
-	Type   string
-	Number float64
-	// size in the measure of uint16's.
-	// E.g. a float32 contains 2 x uint16's,
-	// so the size will be 2.
-	Size float64
+	Type    string
+	Number  float64
+	RegAddr float64
 }
 
-func (w wordInt16LittleEndian) encode() []uint16 {
+func (w wordInt16LittleEndian) Encode() []uint16 {
 	v := uint16(w.Number)
 	v = uint16ToLittleEndian(v)
 
 	return []uint16{v}
 }
 
-func (f wordInt16LittleEndian) getSize() int {
-	return int(f.Size)
+func (f wordInt16LittleEndian) Address() int {
+	return int(f.RegAddr)
 }
 
 // -------------------------------------------------------------------------
@@ -322,50 +305,55 @@ func NewEncoder(m map[string]interface{}) encoder {
 	return nil
 }
 
+// Since we are taking the value types in as interface{} only float64's
+// will be allowed in the JSON. Since it is an interface type we assert
+// it to an float64, but we convert it to it's correct type in the encode
+// methods, e.g. uint16.
+
 func NewFloat32LittleWordBigEndian(m map[string]interface{}) *float32LittleWordBigEndian {
 	return &float32LittleWordBigEndian{
-		Type:   m["type"].(string),
-		Number: m["number"].(float64),
-		Size:   m["size"].(float64),
+		Type:    m["type"].(string),
+		Number:  m["number"].(float64),
+		RegAddr: m["regAddr"].(float64),
 	}
 }
 
 func NewFloat32BigWordBigEndian(m map[string]interface{}) *float32BigWordBigEndian {
 	return &float32BigWordBigEndian{
-		Type:   m["type"].(string),
-		Number: m["number"].(float64),
-		Size:   m["size"].(float64),
+		Type:    m["type"].(string),
+		Number:  m["number"].(float64),
+		RegAddr: m["regAddr"].(float64),
 	}
 }
 
 func NewFloat32LittleWordLittleEndian(m map[string]interface{}) *float32LittleWordLittleEndian {
 	return &float32LittleWordLittleEndian{
-		Type:   m["type"].(string),
-		Number: m["number"].(float64),
-		Size:   m["size"].(float64),
+		Type:    m["type"].(string),
+		Number:  m["number"].(float64),
+		RegAddr: m["regAddr"].(float64),
 	}
 }
 
 func NewFloat32BigWordLittleEndian(m map[string]interface{}) *float32BigWordLittleEndian {
 	return &float32BigWordLittleEndian{
-		Type:   m["type"].(string),
-		Number: m["number"].(float64),
-		Size:   m["size"].(float64),
+		Type:    m["type"].(string),
+		Number:  m["number"].(float64),
+		RegAddr: m["regAddr"].(float64),
 	}
 }
 
 func NewWordInt16BigEndian(m map[string]interface{}) *wordInt16BigEndian {
 	return &wordInt16BigEndian{
-		Type:   m["type"].(string),
-		Number: m["number"].(float64),
-		Size:   m["size"].(float64),
+		Type:    m["type"].(string),
+		Number:  m["number"].(float64),
+		RegAddr: m["regAddr"].(float64),
 	}
 }
 
 func NewWordInt16LittleEndian(m map[string]interface{}) *wordInt16LittleEndian {
 	return &wordInt16LittleEndian{
-		Type:   m["type"].(string),
-		Number: m["number"].(float64),
-		Size:   m["size"].(float64),
+		Type:    m["type"].(string),
+		Number:  m["number"].(float64),
+		RegAddr: m["regAddr"].(float64),
 	}
 }
