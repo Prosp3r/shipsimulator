@@ -8,7 +8,7 @@
 
 	Function codes:
 	1, read coils
-	2, read descrete inputs
+	2, read discrete inputs
 	3, read holding registers
 	4, read input registers
 
@@ -68,7 +68,7 @@ func main() {
 	defer serv.Close()
 
 	// The configuration is split in 4 files, 1 for each register
-	fileNames := []string{"coil.json", "descrete.json", "input.json", "holding.json"}
+	fileNames := []string{"coil.json", "discrete.json", "input.json", "holding.json"}
 
 	// Iterate over all the filenames specified, and create a holding
 	// structure to keep all the file handles in, with info about each
@@ -94,22 +94,28 @@ func main() {
 		// The converting to the real type it represents is handled in
 		// the repsective types Encode method when being called upon.
 		//
-		configFromFile := []map[string]interface{}{}
+		registryRawData := []map[string]interface{}{}
 		js := json.NewDecoder(config.fh)
-		err = js.Decode(&configFromFile)
+		err = js.Decode(&registryRawData)
 		//err = json.Unmarshal(js, &objs)
 		if err != nil {
 			log.Printf("error: decoding json: %v\n", err)
 		}
 
+		// registryData will hold all the data to put into a complete
+		// register.
+		// each element of the slice will represent a register entry.
 		var registryData []encoder
 
-		for _, obj := range configFromFile {
+		for _, obj := range registryRawData {
 			registryData = append(registryData, NewEncoder(obj))
 		}
 
 		// setRegister will set the values into the register
-		setRegister(serv, registryData)
+		err = setRegister(serv, registryData, name[0])
+		if err != nil {
+			log.Printf("error: setRegister: %v\n", err)
+		}
 
 	}
 
@@ -132,10 +138,39 @@ func uint16ToLittleEndian(u uint16) uint16 {
 	return v
 }
 
+func uint16toByteSlice(u uint16) []byte {
+	var b []byte
+	u1 := byte(u >> 8)
+	u2 := byte(u & 0xFF)
+	b = append(b, u1, u2)
+
+	return b
+}
+
 // setRegister will set the values into the register.
-func setRegister(serv *mbserver.Server, registryData []encoder) error {
-	for _, v := range registryData {
-		serv.HoldingRegisters = append(serv.HoldingRegisters[:v.Address()], v.Encode()...)
+func setRegister(serv *mbserver.Server, registryData []encoder, name string) error {
+	// "coil.json", "discrete.json", "input.json", "holding.json"
+	switch name {
+	case "coil":
+		for _, v := range registryData {
+			b := uint16toByteSlice(v.Encode()[0])
+			serv.Coils = append(serv.Coils[:v.Address()], b...)
+		}
+	case "discrete":
+		for _, v := range registryData {
+			b := uint16toByteSlice(v.Encode()[0])
+			serv.DiscreteInputs = append(serv.DiscreteInputs[:v.Address()], b...)
+		}
+	case "input":
+		for _, v := range registryData {
+			serv.InputRegisters = append(serv.InputRegisters[:v.Address()], v.Encode()...)
+		}
+	case "holding":
+		for _, v := range registryData {
+			serv.HoldingRegisters = append(serv.HoldingRegisters[:v.Address()], v.Encode()...)
+		}
+	default:
+		return fmt.Errorf("wrong file given: Allowed files are coil.json|discrete.json|input.json|holding.json")
 	}
 
 	return nil
@@ -289,6 +324,9 @@ func (f wordInt16LittleEndian) Address() int {
 
 // -------------------------------------------------------------------------
 
+// NewEncoder will take the raw data given to it,
+// check the "type" field, and return a decoder
+// with the type set based on the "type" field.
 func NewEncoder(m map[string]interface{}) encoder {
 	switch m["type"].(string) {
 	case "float32LittleWordBigEndian":
