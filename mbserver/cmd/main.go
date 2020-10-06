@@ -34,8 +34,8 @@
 	https://modbus.org/docs/Modbus_Application_Protocol_V1_1b3.pdf
 
 	TODO:
-	- Keep an array of used address of a register to dectect possible overlaps by errors in provided in JSON config file ?
 	- Select what listeners to start, like RTU TCP, Modbus TCP.
+	- The name used in the switch/case of the setRegister function is taken from the input fileName. If another fileName if used it will fail. Look into how to make this persistent no matter what filename used.
 */
 
 package main
@@ -72,6 +72,11 @@ func NewFlags() *flags {
 }
 
 func (f *flags) parseFlags() {
+	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, "This is not helpful.\n")
+		flag.PrintDefaults()
+	}
+
 	jsonCoil := flag.String("jsonCoil", "", "JSON file to take as input to generate Coil registers")
 	jsonDiscrete := flag.String("jsonDiscrete", "", "JSON file to take as input to generate Discrete registers")
 	jsonInput := flag.String("jsonInput", "", "JSON file to take as input to generate input registers")
@@ -96,8 +101,10 @@ func main() {
 	err := serv.ListenRTUTCP(":5502")
 	if err != nil {
 		log.Printf("%v\n", err)
+		return
 	}
 	defer serv.Close()
+	log.Println("Started the modbus generator...")
 
 	// The configuration is split in 4 files, 1 for each register
 	fileNames := []string{f.jsonCoil, f.jsonDiscrete, f.jsonInput, f.jsonHolding}
@@ -217,7 +224,6 @@ func setRegister(serv *mbserver.Server, registryData []encoder, name string, add
 			}
 
 			serv.Coils = append(serv.Coils[:addr], b...)
-
 			prevAddr = addr
 		}
 	case "discrete":
@@ -231,7 +237,6 @@ func setRegister(serv *mbserver.Server, registryData []encoder, name string, add
 			}
 
 			serv.DiscreteInputs = append(serv.DiscreteInputs[:addr], b...)
-
 			prevAddr = addr
 		}
 	case "input":
@@ -243,7 +248,6 @@ func setRegister(serv *mbserver.Server, registryData []encoder, name string, add
 			}
 
 			serv.InputRegisters = append(serv.InputRegisters[:addr], v.Encode()...)
-
 			prevAddr = addr
 		}
 	case "holding":
@@ -253,8 +257,8 @@ func setRegister(serv *mbserver.Server, registryData []encoder, name string, add
 			if prevAddr > addr-holdingSize {
 				return fmt.Errorf("wrong increment of address in holding register for address after %v", addr)
 			}
-			serv.HoldingRegisters = append(serv.HoldingRegisters[:addr], v.Encode()...)
 
+			serv.HoldingRegisters = append(serv.HoldingRegisters[:addr], v.Encode()...)
 			prevAddr = addr
 		}
 	default:
@@ -286,7 +290,7 @@ func (f float32LittleWordBigEndian) Encode() []uint16 {
 	n := float32(f.Number)
 	v1 := uint16((math.Float32bits(n) >> 16) & 0xffff)
 	v2 := uint16((math.Float32bits(n)) & 0xffff)
-	fmt.Printf("*v1 = %v*\n", v1)
+	// fmt.Printf("*v1 = %v*\n", v1)
 	return []uint16{v2, v1}
 }
 
@@ -310,7 +314,7 @@ func (f float32BigWordBigEndian) Encode() []uint16 {
 	n := float32(f.Number)
 	v1 := uint16((math.Float32bits(n) >> 16) & 0xffff)
 	v2 := uint16((math.Float32bits(n)) & 0xffff)
-	fmt.Printf("*v1 = %v*\n", v1)
+	// fmt.Printf("*v1 = %v*\n", v1)
 	return []uint16{v1, v2}
 }
 
