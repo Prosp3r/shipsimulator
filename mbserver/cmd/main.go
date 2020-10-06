@@ -49,7 +49,6 @@ import (
 	"math"
 	"os"
 	"os/signal"
-	"strings"
 
 	"github.com/RaaLabs/shipsimulator/mbserver"
 )
@@ -60,10 +59,11 @@ type config struct {
 }
 
 type flags struct {
-	jsonCoil            string
-	jsonDiscrete        string
-	jsonInput           string
-	jsonHolding         string
+	// jsonCoil            string
+	// jsonDiscrete        string
+	// jsonInput           string
+	// jsonHolding         string
+	registerFiles       []registerFile
 	registerStartOffset int
 }
 
@@ -85,11 +85,23 @@ func (f *flags) parseFlags() {
 
 	flag.Parse()
 
-	f.jsonCoil = *jsonCoil
-	f.jsonDiscrete = *jsonDiscrete
-	f.jsonInput = *jsonInput
-	f.jsonHolding = *jsonHolding
+	f.registerFiles = append(f.registerFiles, registerFile{filename: *jsonCoil, registerType: coilType})
+	f.registerFiles = append(f.registerFiles, registerFile{filename: *jsonDiscrete, registerType: discreteType})
+	f.registerFiles = append(f.registerFiles, registerFile{filename: *jsonInput, registerType: inputType})
+	f.registerFiles = append(f.registerFiles, registerFile{filename: *jsonHolding, registerType: holdingType})
 	f.registerStartOffset = *registerStartOffset
+}
+
+type registerType string
+
+const coilType registerType = "coil"
+const discreteType registerType = "discrete"
+const inputType registerType = "input"
+const holdingType registerType = "holding"
+
+type registerFile struct {
+	filename     string
+	registerType registerType
 }
 
 func main() {
@@ -107,7 +119,7 @@ func main() {
 	log.Println("Started the modbus generator...")
 
 	// The configuration is split in 4 files, 1 for each register
-	fileNames := []string{f.jsonCoil, f.jsonDiscrete, f.jsonInput, f.jsonHolding}
+	//fileNames := []string{f.jsonCoil, f.jsonDiscrete, f.jsonInput, f.jsonHolding}
 
 	// Iterate over all the filenames specified, and create a holding
 	// structure to keep all the file handles in, with info about each
@@ -115,23 +127,21 @@ func main() {
 
 	configFileSpecified := false
 
-	for _, fileName := range fileNames {
-		if fileName == "" {
+	for _, v := range f.registerFiles {
+		if v.filename == "" {
 			continue
 		}
 
 		configFileSpecified = true
 
-		fh, err := os.Open(fileName)
+		fh, err := os.Open(v.filename)
 		if err != nil {
-			log.Printf("error: failed to open config file for %v: %v\n", fileName, err)
+			log.Printf("error: failed to open config file for %v: %v\n", v.filename, err)
 			continue
 		}
 
-		// split out the prefix .json, and get the filename.
-		name := strings.Split(fileName, ".")
 		config := config{
-			name: name[0],
+			name: string(v.registerType),
 			fh:   fh,
 		}
 		defer fh.Close()
@@ -160,7 +170,7 @@ func main() {
 		}
 
 		// setRegister will set the values into the register
-		err = setRegister(serv, registryData, name[0], f.registerStartOffset)
+		err = setRegister(serv, registryData, string(v.registerType), f.registerStartOffset)
 		if err != nil {
 			log.Printf("error: setRegister: %v\n", err)
 			return
