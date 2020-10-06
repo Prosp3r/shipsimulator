@@ -67,11 +67,11 @@ Description of flags provided by modbus generator.
   -jsonInput string
         JSON file to take as input to generate input registers
   -registerStartOffset int
-        Use 0 or -1 (-1 is the default). 
-                Do you want the register nr. to be specified as it is in the config file, 
-                or to add 1 to the value ? -1 presents it as it is in the config file, 
-                or setting the value to 0 will make the generator add 1 to the register 
-                address specified in the config. 
-                Example: if 0 is specified, a register with the address of 300 in the 
+        Use 0 or -1 (-1 is the default).
+                Do you want the register nr. to be specified as it is in the config file,
+                or to add 1 to the value ? -1 presents it as it is in the config file,
+                or setting the value to 0 will make the generator add 1 to the register
+                address specified in the config.
+                Example: if 0 is specified, a register with the address of 300 in the
                 config file will need to be read as 301 from modpoll. (default -1)
 ```
