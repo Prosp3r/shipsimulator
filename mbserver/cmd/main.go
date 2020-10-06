@@ -295,8 +295,17 @@ type wordInt16BigEndian struct {
 }
 
 func (w wordInt16BigEndian) Encode() []uint16 {
+	// NB: The type wordInt16BigEndian with it's decode method
+	// is primarily used for coils and discrete registers.
+	// In other implementations it seems like coil value is held
+	// in the 8MSB, and that the value is set to 0x1 for the 8 LSB,
+	// but the reason for this I've not completely understood.
+	// So beware that this one might be wrong implemented and might
+	// need to be changed.
+	// But the modpoll tool seems to interpret the value returned
+	// from the register ok as it is, so it seems to be good.
+
 	//v := uint16(w.Number)
-	// * HERE *
 	vTmp := uint16(w.Number) << 8
 	v := vTmp | uint16(1)
 
