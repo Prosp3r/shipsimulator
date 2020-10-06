@@ -43,6 +43,7 @@ package main
 import (
 	"encoding/binary"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"log"
 	"math"
@@ -58,7 +59,35 @@ type config struct {
 	fh   *os.File
 }
 
+type flags struct {
+	jsonCoil     string
+	jsonDiscrete string
+	jsonInput    string
+	jsonHolding  string
+}
+
+func NewFlags() *flags {
+	return &flags{}
+}
+
+func (f *flags) parseFlags() {
+	jsonCoil := flag.String("jsonCoil", "", "JSON file to take as input to generate Coil registers")
+	jsonDiscrete := flag.String("jsonDiscrete", "", "JSON file to take as input to generate Discrete registers")
+	jsonInput := flag.String("jsonInput", "", "JSON file to take as input to generate input registers")
+	jsonHolding := flag.String("jsonHolding", "", "JSON file to take as input to generate Holding registers")
+
+	flag.Parse()
+
+	f.jsonCoil = *jsonCoil
+	f.jsonDiscrete = *jsonDiscrete
+	f.jsonInput = *jsonInput
+	f.jsonHolding = *jsonHolding
+}
+
 func main() {
+	f := NewFlags()
+	f.parseFlags()
+
 	// Start a new server
 	serv := mbserver.NewServer()
 	err := serv.ListenRTUTCP(":5502")
@@ -68,12 +97,21 @@ func main() {
 	defer serv.Close()
 
 	// The configuration is split in 4 files, 1 for each register
-	fileNames := []string{"coil.json", "discrete.json", "input.json", "holding.json"}
+	fileNames := []string{f.jsonCoil, f.jsonDiscrete, f.jsonInput, f.jsonHolding}
 
 	// Iterate over all the filenames specified, and create a holding
 	// structure to keep all the file handles in, with info about each
 	// register.
+
+	configFileSpecified := false
+
 	for _, fileName := range fileNames {
+		if fileName == "" {
+			continue
+		}
+
+		configFileSpecified = true
+
 		fh, err := os.Open(fileName)
 		if err != nil {
 			log.Printf("error: failed to open config file for %v: %v\n", fileName, err)
@@ -117,6 +155,11 @@ func main() {
 			log.Printf("error: setRegister: %v\n", err)
 		}
 
+	}
+
+	if configFileSpecified != true {
+		log.Println("info: no config files specified or found. Use the --help flag for how to use the flags.")
+		return
 	}
 
 	// Wait for someone to press CTRL+C.
