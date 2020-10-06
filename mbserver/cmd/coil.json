@@ -1,10 +1,6 @@
 [{
     "type": "wordInt16BigEndian",
     "number": 1,
-    "regAddr": 300
-}, {
-    "type": "wordInt16BigEndian",
-    "number": 1,
     "regAddr": 301
 }, {
     "type": "wordInt16BigEndian",
@@ -12,10 +8,14 @@
     "regAddr": 302
 }, {
     "type": "wordInt16BigEndian",
-    "number": 0,
+    "number": 1,
     "regAddr": 303
 }, {
     "type": "wordInt16BigEndian",
-    "number": 1,
+    "number": 0,
     "regAddr": 304
+}, {
+    "type": "wordInt16BigEndian",
+    "number": 1,
+    "regAddr": 305
 }]

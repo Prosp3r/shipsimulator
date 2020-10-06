@@ -156,6 +156,7 @@ func main() {
 		err = setRegister(serv, registryData, name[0], f.registerStartOffset)
 		if err != nil {
 			log.Printf("error: setRegister: %v\n", err)
+			return
 		}
 
 	}
@@ -194,28 +195,67 @@ func uint16toByteSlice(u uint16) []byte {
 	return b
 }
 
+// The size of the registers in number of uint16's
+const coilSize = 1
+const discreteSize = 1
+const inputSize = 2
+const holdingSize = 2
+
 // setRegister will set the values into the register that is presented as a slice
 // within the serv receiver.
 func setRegister(serv *mbserver.Server, registryData []encoder, name string, addrOffset int) error {
-	// "coil.json", "discrete.json", "input.json", "holding.json"
+	var prevAddr int
+
 	switch name {
 	case "coil":
 		for _, v := range registryData {
 			b := uint16toByteSlice(v.Encode()[0])
-			serv.Coils = append(serv.Coils[:v.Address()+addrOffset], b...)
+			addr := v.Address() + addrOffset
+
+			if prevAddr > addr-coilSize {
+				return fmt.Errorf("wrong increment of address in coil register for address after %v", addr)
+			}
+
+			serv.Coils = append(serv.Coils[:addr], b...)
+
+			prevAddr = addr
 		}
 	case "discrete":
 		for _, v := range registryData {
 			b := uint16toByteSlice(v.Encode()[0])
-			serv.DiscreteInputs = append(serv.DiscreteInputs[:v.Address()+addrOffset], b...)
+
+			addr := v.Address() + addrOffset
+
+			if prevAddr > addr-discreteSize {
+				return fmt.Errorf("wrong increment of address in discrete register for address after %v", addr)
+			}
+
+			serv.DiscreteInputs = append(serv.DiscreteInputs[:addr], b...)
+
+			prevAddr = addr
 		}
 	case "input":
 		for _, v := range registryData {
-			serv.InputRegisters = append(serv.InputRegisters[:v.Address()+addrOffset], v.Encode()...)
+			addr := v.Address() + addrOffset
+
+			if prevAddr > addr-inputSize {
+				return fmt.Errorf("wrong increment of address in input register for address after %v", addr)
+			}
+
+			serv.InputRegisters = append(serv.InputRegisters[:addr], v.Encode()...)
+
+			prevAddr = addr
 		}
 	case "holding":
 		for _, v := range registryData {
-			serv.HoldingRegisters = append(serv.HoldingRegisters[:v.Address()+addrOffset], v.Encode()...)
+			addr := v.Address() + addrOffset
+
+			if prevAddr > addr-holdingSize {
+				return fmt.Errorf("wrong increment of address in holding register for address after %v", addr)
+			}
+			serv.HoldingRegisters = append(serv.HoldingRegisters[:addr], v.Encode()...)
+
+			prevAddr = addr
 		}
 	default:
 		return fmt.Errorf("wrong file given: Allowed files are coil.json|discrete.json|input.json|holding.json")
@@ -294,7 +334,7 @@ func (f float32LittleWordLittleEndian) Encode() []uint16 {
 	n := float32(f.Number)
 	v1 := uint16((math.Float32bits(n) >> 16) & 0xffff)
 	v2 := uint16((math.Float32bits(n)) & 0xffff)
-	fmt.Printf("*v1 = %v*\n", v1)
+	// fmt.Printf("*v1 = %v*\n", v1)
 
 	v1 = uint16ToLittleEndian(v1)
 	v2 = uint16ToLittleEndian(v2)
@@ -321,7 +361,7 @@ func (f float32BigWordLittleEndian) Encode() []uint16 {
 	n := float32(f.Number)
 	v1 := uint16((math.Float32bits(n) >> 16) & 0xffff)
 	v2 := uint16((math.Float32bits(n)) & 0xffff)
-	fmt.Printf("*v1 = %v*\n", v1)
+	// fmt.Printf("*v1 = %v*\n", v1)
 
 	v1 = uint16ToLittleEndian(v1)
 	v2 = uint16ToLittleEndian(v2)
