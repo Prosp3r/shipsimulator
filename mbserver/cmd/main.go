@@ -60,10 +60,11 @@ type config struct {
 }
 
 type flags struct {
-	jsonCoil     string
-	jsonDiscrete string
-	jsonInput    string
-	jsonHolding  string
+	jsonCoil            string
+	jsonDiscrete        string
+	jsonInput           string
+	jsonHolding         string
+	registerStartOffset int
 }
 
 func NewFlags() *flags {
@@ -75,6 +76,7 @@ func (f *flags) parseFlags() {
 	jsonDiscrete := flag.String("jsonDiscrete", "", "JSON file to take as input to generate Discrete registers")
 	jsonInput := flag.String("jsonInput", "", "JSON file to take as input to generate input registers")
 	jsonHolding := flag.String("jsonHolding", "", "JSON file to take as input to generate Holding registers")
+	registerStartOffset := flag.Int("registerStartOffset", -1, "Use 0 or -1 (-1 is the default). Do you want the register nr. to be specified as it is in the config file, or to add 1 to the value ? -1 presents it as it is in the config file, or setting the value to 0 will make the generator add 1 to the register address specified in the config. Example if 0 a specified register with the address of 300 will need to be read as 301 from modpoll.")
 
 	flag.Parse()
 
@@ -82,6 +84,7 @@ func (f *flags) parseFlags() {
 	f.jsonDiscrete = *jsonDiscrete
 	f.jsonInput = *jsonInput
 	f.jsonHolding = *jsonHolding
+	f.registerStartOffset = *registerStartOffset
 }
 
 func main() {
@@ -150,14 +153,15 @@ func main() {
 		}
 
 		// setRegister will set the values into the register
-		err = setRegister(serv, registryData, name[0])
+		err = setRegister(serv, registryData, name[0], f.registerStartOffset)
 		if err != nil {
 			log.Printf("error: setRegister: %v\n", err)
 		}
 
 	}
 
-	if configFileSpecified != true {
+	// If no config files where specified, exit with info message.
+	if !configFileSpecified {
 		log.Println("info: no config files specified or found. Use the --help flag for how to use the flags.")
 		return
 	}
@@ -192,26 +196,26 @@ func uint16toByteSlice(u uint16) []byte {
 
 // setRegister will set the values into the register that is presented as a slice
 // within the serv receiver.
-func setRegister(serv *mbserver.Server, registryData []encoder, name string) error {
+func setRegister(serv *mbserver.Server, registryData []encoder, name string, addrOffset int) error {
 	// "coil.json", "discrete.json", "input.json", "holding.json"
 	switch name {
 	case "coil":
 		for _, v := range registryData {
 			b := uint16toByteSlice(v.Encode()[0])
-			serv.Coils = append(serv.Coils[:v.Address()], b...)
+			serv.Coils = append(serv.Coils[:v.Address()+addrOffset], b...)
 		}
 	case "discrete":
 		for _, v := range registryData {
 			b := uint16toByteSlice(v.Encode()[0])
-			serv.DiscreteInputs = append(serv.DiscreteInputs[:v.Address()], b...)
+			serv.DiscreteInputs = append(serv.DiscreteInputs[:v.Address()+addrOffset], b...)
 		}
 	case "input":
 		for _, v := range registryData {
-			serv.InputRegisters = append(serv.InputRegisters[:v.Address()], v.Encode()...)
+			serv.InputRegisters = append(serv.InputRegisters[:v.Address()+addrOffset], v.Encode()...)
 		}
 	case "holding":
 		for _, v := range registryData {
-			serv.HoldingRegisters = append(serv.HoldingRegisters[:v.Address()], v.Encode()...)
+			serv.HoldingRegisters = append(serv.HoldingRegisters[:v.Address()+addrOffset], v.Encode()...)
 		}
 	default:
 		return fmt.Errorf("wrong file given: Allowed files are coil.json|discrete.json|input.json|holding.json")
