@@ -147,7 +147,8 @@ func uint16toByteSlice(u uint16) []byte {
 	return b
 }
 
-// setRegister will set the values into the register.
+// setRegister will set the values into the register that is presented as a slice
+// within the serv receiver.
 func setRegister(serv *mbserver.Server, registryData []encoder, name string) error {
 	// "coil.json", "discrete.json", "input.json", "holding.json"
 	switch name {
@@ -294,7 +295,10 @@ type wordInt16BigEndian struct {
 }
 
 func (w wordInt16BigEndian) Encode() []uint16 {
-	v := uint16(w.Number)
+	//v := uint16(w.Number)
+	// * HERE *
+	vTmp := uint16(w.Number) << 8
+	v := vTmp | uint16(1)
 
 	return []uint16{v}
 }
