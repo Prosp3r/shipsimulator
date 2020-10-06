@@ -73,7 +73,7 @@ func NewFlags() *flags {
 
 func (f *flags) parseFlags() {
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "This is not helpful.\n")
+		fmt.Fprintf(os.Stderr, "Description of flags provided by modbus generator.\n\n")
 		flag.PrintDefaults()
 	}
 
@@ -81,7 +81,13 @@ func (f *flags) parseFlags() {
 	jsonDiscrete := flag.String("jsonDiscrete", "", "JSON file to take as input to generate Discrete registers")
 	jsonInput := flag.String("jsonInput", "", "JSON file to take as input to generate input registers")
 	jsonHolding := flag.String("jsonHolding", "", "JSON file to take as input to generate Holding registers")
-	registerStartOffset := flag.Int("registerStartOffset", -1, "Use 0 or -1 (-1 is the default). Do you want the register nr. to be specified as it is in the config file, or to add 1 to the value ? -1 presents it as it is in the config file, or setting the value to 0 will make the generator add 1 to the register address specified in the config. Example if 0 a specified register with the address of 300 will need to be read as 301 from modpoll.")
+	registerStartOffset := flag.Int("registerStartOffset", -1, `Use 0 or -1 (-1 is the default). 
+	Do you want the register nr. to be specified as it is in the config file, 
+	or to add 1 to the value ? -1 presents it as it is in the config file, 
+	or setting the value to 0 will make the generator add 1 to the register 
+	address specified in the config. 
+	Example: if 0 is specified, a register with the address of 300 in the 
+	config file will need to be read as 301 from modpoll.`)
 
 	flag.Parse()
 
