@@ -53,6 +53,100 @@ import (
 	"github.com/RaaLabs/shipsimulator/mbserver"
 )
 
+func main() {
+	f := NewFlags()
+	f.parseFlags()
+
+	// Start a new server
+	serv := mbserver.NewServer()
+	err := serv.ListenRTUTCP(":5502")
+	if err != nil {
+		log.Printf("%v\n", err)
+		return
+	}
+	defer serv.Close()
+	log.Println("Started the modbus generator...")
+
+	// The configuration is split in 4 files, 1 for each register
+	//fileNames := []string{f.jsonCoil, f.jsonDiscrete, f.jsonInput, f.jsonHolding}
+
+	// Iterate over all the filenames specified, and create a holding
+	// structure to keep all the file handles in, with info about each
+	// register.
+
+	configFileSpecified := false
+
+	for _, v := range f.registerFiles {
+		if v.filename == "" {
+			continue
+		}
+
+		configFileSpecified = true
+
+		fh, err := os.Open(v.filename)
+		if err != nil {
+			log.Printf("error: failed to open config file for %v: %v\n", v.filename, err)
+			continue
+		}
+
+		config := config{
+			name: string(v.registerType),
+			fh:   fh,
+		}
+		defer fh.Close()
+
+		// Since we are using the routine to unmarshall the JSON, and
+		// we want it unmarshaled into different types, we use a map
+		// with string key and empty interface to store the data values.
+		// The converting to the real type it represents is handled in
+		// the repsective types Encode method when being called upon.
+		//
+		registryRawData := []map[string]interface{}{}
+
+		js := json.NewDecoder(config.fh)
+		err = js.Decode(&registryRawData)
+		//err = json.Unmarshal(js, &objs)
+		if err != nil {
+			log.Printf("error: decoding json: %v\n", err)
+		}
+
+		// registryData will hold all the data to put into a complete
+		// register.
+		// each element of the slice will represent a register entry.
+		var registryData []encoder
+
+		// Since encoder is an interface type, we need to figure out
+		// the concrete type each encoder is.
+		// Loop over the data unmarshaled above, and call NewEncoder.
+		// New encoder will check the obj's type field and return an
+		// encoder of the correct concrete type.
+		for _, obj := range registryRawData {
+			registryData = append(registryData, NewEncoder(obj))
+		}
+
+		// setRegister will set and populate the values into the register
+		err = setRegister(serv, registryData, string(v.registerType), f.registerStartOffset)
+		if err != nil {
+			log.Printf("error: setRegister: %v\n", err)
+			return
+		}
+
+	}
+
+	// If no config files where specified, exit with info message.
+	if !configFileSpecified {
+		log.Println("info: no config files specified or found. Use the --help flag for how to use the flags.")
+		return
+	}
+
+	// Wait for someone to press CTRL+C.
+	fmt.Println("Press ctrl+c to stop")
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	<-c
+	fmt.Println("Stopped")
+}
+
 type config struct {
 	name string
 	fh   *os.File
@@ -110,94 +204,6 @@ type registerFile struct {
 	registerType registerType
 }
 
-func main() {
-	f := NewFlags()
-	f.parseFlags()
-
-	// Start a new server
-	serv := mbserver.NewServer()
-	err := serv.ListenRTUTCP(":5502")
-	if err != nil {
-		log.Printf("%v\n", err)
-		return
-	}
-	defer serv.Close()
-	log.Println("Started the modbus generator...")
-
-	// The configuration is split in 4 files, 1 for each register
-	//fileNames := []string{f.jsonCoil, f.jsonDiscrete, f.jsonInput, f.jsonHolding}
-
-	// Iterate over all the filenames specified, and create a holding
-	// structure to keep all the file handles in, with info about each
-	// register.
-
-	configFileSpecified := false
-
-	for _, v := range f.registerFiles {
-		if v.filename == "" {
-			continue
-		}
-
-		configFileSpecified = true
-
-		fh, err := os.Open(v.filename)
-		if err != nil {
-			log.Printf("error: failed to open config file for %v: %v\n", v.filename, err)
-			continue
-		}
-
-		config := config{
-			name: string(v.registerType),
-			fh:   fh,
-		}
-		defer fh.Close()
-
-		// Since we are using the routine to unmarshall the JSON, and
-		// we want it unmarshaled into different types, we use a map
-		// with string key and empty interface to store the data values.
-		// The converting to the real type it represents is handled in
-		// the repsective types Encode method when being called upon.
-		//
-		registryRawData := []map[string]interface{}{}
-		js := json.NewDecoder(config.fh)
-		err = js.Decode(&registryRawData)
-		//err = json.Unmarshal(js, &objs)
-		if err != nil {
-			log.Printf("error: decoding json: %v\n", err)
-		}
-
-		// registryData will hold all the data to put into a complete
-		// register.
-		// each element of the slice will represent a register entry.
-		var registryData []encoder
-
-		for _, obj := range registryRawData {
-			registryData = append(registryData, NewEncoder(obj))
-		}
-
-		// setRegister will set the values into the register
-		err = setRegister(serv, registryData, string(v.registerType), f.registerStartOffset)
-		if err != nil {
-			log.Printf("error: setRegister: %v\n", err)
-			return
-		}
-
-	}
-
-	// If no config files where specified, exit with info message.
-	if !configFileSpecified {
-		log.Println("info: no config files specified or found. Use the --help flag for how to use the flags.")
-		return
-	}
-
-	// Wait for someone to press CTRL+C.
-	fmt.Println("Press ctrl+c to stop")
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt)
-	<-c
-	fmt.Println("Stopped")
-}
-
 // uint16ToLittleEndian will swap the byte order of the 'two
 // 8 bit bytes that an uint16 is made up of.
 func uint16ToLittleEndian(u uint16) uint16 {
@@ -209,7 +215,9 @@ func uint16ToLittleEndian(u uint16) uint16 {
 	return v
 }
 
-func uint16toByteSlice(u uint16) []byte {
+// uint16ToByteSlice will split a 16 bit value into two 8 bit
+// values, and return them as a slice if bytes.
+func uint16ToByteSlice(u uint16) []byte {
 	var b []byte
 	u1 := byte(u >> 8)
 	u2 := byte(u & 0xFF)
@@ -226,13 +234,13 @@ const holdingSize = 2
 
 // setRegister will set the values into the register that is presented as a slice
 // within the serv receiver.
-func setRegister(serv *mbserver.Server, registryData []encoder, name string, addrOffset int) error {
+func setRegister(serv *mbserver.Server, registryData []encoder, registerType string, addrOffset int) error {
 	var prevAddr int
 
-	switch name {
+	switch registerType {
 	case "coil":
 		for _, v := range registryData {
-			b := uint16toByteSlice(v.Encode()[0])
+			b := uint16ToByteSlice(v.Encode()[0])
 			addr := v.Address() + addrOffset
 
 			if prevAddr > addr-coilSize {
@@ -244,8 +252,7 @@ func setRegister(serv *mbserver.Server, registryData []encoder, name string, add
 		}
 	case "discrete":
 		for _, v := range registryData {
-			b := uint16toByteSlice(v.Encode()[0])
-
+			b := uint16ToByteSlice(v.Encode()[0])
 			addr := v.Address() + addrOffset
 
 			if prevAddr > addr-discreteSize {
@@ -465,11 +472,15 @@ func NewEncoder(m map[string]interface{}) encoder {
 	return nil
 }
 
+// Create the concrete types for the interface type enocoder.
+//
 // Since we are taking the value types in as interface{} only float64's
-// will be allowed in the JSON. Since it is an interface type we assert
+// will be allowed in the JSON, and since it is an interface type we assert
 // it to an float64, but we convert it to it's correct type in the encode
-// methods, e.g. uint16.
+// method for each concrete type, e.g. uint16.
 
+// NewFloat32LittleWordBigEndian will assert the struct fields to it's
+// correct type, and return the concrete type.
 func NewFloat32LittleWordBigEndian(m map[string]interface{}) *float32LittleWordBigEndian {
 	return &float32LittleWordBigEndian{
 		Type:    m["type"].(string),
@@ -478,6 +489,8 @@ func NewFloat32LittleWordBigEndian(m map[string]interface{}) *float32LittleWordB
 	}
 }
 
+// NewFloat32BigWordBigEndian will assert the struct fields to it's
+// correct type, and return the concrete type.
 func NewFloat32BigWordBigEndian(m map[string]interface{}) *float32BigWordBigEndian {
 	return &float32BigWordBigEndian{
 		Type:    m["type"].(string),
@@ -486,6 +499,8 @@ func NewFloat32BigWordBigEndian(m map[string]interface{}) *float32BigWordBigEndi
 	}
 }
 
+// NewFloat32LittleWordLittleEndian will assert the struct fields to it's
+// correct type, and return the concrete type.
 func NewFloat32LittleWordLittleEndian(m map[string]interface{}) *float32LittleWordLittleEndian {
 	return &float32LittleWordLittleEndian{
 		Type:    m["type"].(string),
@@ -494,6 +509,8 @@ func NewFloat32LittleWordLittleEndian(m map[string]interface{}) *float32LittleWo
 	}
 }
 
+// NewFloat32BigWordLittleEndian will assert the struct fields to it's
+// correct type, and return the concrete type.
 func NewFloat32BigWordLittleEndian(m map[string]interface{}) *float32BigWordLittleEndian {
 	return &float32BigWordLittleEndian{
 		Type:    m["type"].(string),
@@ -502,6 +519,8 @@ func NewFloat32BigWordLittleEndian(m map[string]interface{}) *float32BigWordLitt
 	}
 }
 
+// NewWordInt16BigEndian will assert the struct fields to it's
+// correct type, and return the concrete type.
 func NewWordInt16BigEndian(m map[string]interface{}) *wordInt16BigEndian {
 	return &wordInt16BigEndian{
 		Type:    m["type"].(string),
@@ -510,6 +529,8 @@ func NewWordInt16BigEndian(m map[string]interface{}) *wordInt16BigEndian {
 	}
 }
 
+// NewWordInt16LittleEndian will assert the struct fields to it's
+// correct type, and return the concrete type.
 func NewWordInt16LittleEndian(m map[string]interface{}) *wordInt16LittleEndian {
 	return &wordInt16LittleEndian{
 		Type:    m["type"].(string),
