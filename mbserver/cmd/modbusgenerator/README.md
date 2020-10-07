@@ -2,6 +2,26 @@
 
 Modbus simulator will let you start a modbus slave with pregenerated dataset's that will be read from json files provided by the caller.
 
+## Run / build
+
+In an environment where Go is installed.
+
+To run the code directly
+
+```bash
+go run main.go --help
+```
+
+To build an executable for Linux amd64 architecture.
+
+```bash
+env GOOS=linux GOARCH=amd64 go build
+```
+
+## Precombiled executable binary for Linux amd64
+
+`modbusgenerator`
+
 ## JSON config file
 
 The config for a specific register are specified in a JSON file. Each type of register coil|discrete|input|handler must be specified in it's own separate config file, so for example a coil register must be specified in it's own file, a discrete register in it's own file, and so on.
