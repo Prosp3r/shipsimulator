@@ -1,0 +1,11 @@
+version: "3"
+
+services:
+  nmeagenerator:
+    # If a build is done, the local Dockerfile will be used,
+    # and the image created will be named based on the name
+    # specified in image:
+    build: .
+    image: nmea:1.0
+    restart: always
+    command: /app/main -address=10.0.0.26:8888 -file=/app/output.nmea -delay=1000000 -loop=true
