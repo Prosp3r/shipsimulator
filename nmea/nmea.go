@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"log"
 	"net"
 	"os"
 	"time"
@@ -57,20 +58,34 @@ func parse(nmeaText string, conn net.Conn) error {
 	return nil
 }
 
-// Run will start the parsing and sending process,
-// and takes the full path of the file to parse,
-// the address:port of the host to connect to,
-// and a delay as an int in milliseconds to wait
+// Run will start the parsing and sending process.
+// Takes the "full path" of the file to parse.
+// The "address:port" of the host to connect to in
+// "mode=send", and the "address:port" of a local
+// interface to listen on if "mode=listen".
+// "delay" as an int in milliseconds to wait
 // between each iteration of line in the file.
-func Run(nmeaFile string, address string, delay int, loop bool) error {
-
-	// Open the network connection to the receiver
-	conn, err := net.Dial("tcp", address)
+// Loop set to true will read the input file over
+// and over.
+func Run(nmeaFile string, address string, delay int, loop bool) {
+	nl, err := net.Listen("tcp", address)
 	if err != nil {
-		return fmt.Errorf("error: net dial failed sendToBroker: %v", err)
+		log.Printf("error: net listen failed: %v\n", err)
+		return
 	}
-	defer conn.Close()
+	defer nl.Close()
 
+	for {
+		conn, err := nl.Accept()
+		if err != nil {
+			log.Printf("error: net Accept failed: %v\n", err)
+		}
+
+		go readAndSend(nmeaFile, conn, delay, loop)
+	}
+
+}
+func readAndSend(nmeaFile string, conn net.Conn, delay int, loop bool) error {
 	for {
 		// Open the nmea file for reading
 		f, err := os.Open(nmeaFile)
@@ -89,6 +104,12 @@ func Run(nmeaFile string, address string, delay int, loop bool) error {
 		if !loop {
 			break
 		}
+
+		err = conn.Close()
+		if err != nil {
+			return fmt.Errorf("error: failed to close connection: %v", err)
+		}
+
 	}
 
 	return nil

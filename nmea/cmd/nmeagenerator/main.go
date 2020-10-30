@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"log"
 
 	"github.com/RaaLabs/shipsimulator/nmea"
 	// "github.com/pkg/profile"
@@ -17,8 +16,6 @@ func main() {
 	loop := flag.Bool("loop", false, "loop over again, and again, and again, and again,...........")
 	flag.Parse()
 
-	err := nmea.Run(*file, *address, *delay, *loop)
-	if err != nil {
-		log.Println(err)
-	}
+	nmea.Run(*file, *address, *delay, *loop)
+
 }
