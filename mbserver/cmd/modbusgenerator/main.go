@@ -59,7 +59,7 @@ func main() {
 
 	// Start a new server
 	serv := mbserver.NewServer()
-	err := serv.ListenRTUTCP(":5502")
+	err := serv.ListenRTUTCP(f.ListenRTUTCPPort)
 	if err != nil {
 		log.Printf("%v\n", err)
 		return
@@ -159,6 +159,7 @@ type flags struct {
 	// jsonHolding         string
 	registerFiles       []registerFile
 	registerStartOffset int
+	ListenRTUTCPPort    string
 }
 
 func NewFlags() *flags {
@@ -182,6 +183,7 @@ func (f *flags) parseFlags() {
 	address specified in the config. 
 	Example: if 0 is specified, a register with the address of 300 in the 
 	config file will need to be read as 301 from modpoll.`)
+	listenRTUTCPPort := flag.String("listenRTUTCPPort", ":5502", "The address and port to listen on")
 
 	flag.Parse()
 
@@ -190,6 +192,7 @@ func (f *flags) parseFlags() {
 	f.registerFiles = append(f.registerFiles, registerFile{filename: *jsonInput, registerType: inputType})
 	f.registerFiles = append(f.registerFiles, registerFile{filename: *jsonHolding, registerType: holdingType})
 	f.registerStartOffset = *registerStartOffset
+	f.ListenRTUTCPPort = *listenRTUTCPPort
 }
 
 type registerType string
