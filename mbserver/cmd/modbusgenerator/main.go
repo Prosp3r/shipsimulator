@@ -395,7 +395,7 @@ func (f float32BigWordLittleEndian) Encode() []uint16 {
 
 	v1 = uint16ToLittleEndian(v1)
 	v2 = uint16ToLittleEndian(v2)
-	return []uint16{v2, v1}
+	return []uint16{v1, v2}
 }
 
 func (f float32BigWordLittleEndian) Address() int {
