@@ -48,7 +48,7 @@ func parse(nmeaText string, conn net.Conn) error {
 	// Send over the network connection to the receiver
 	// if the data read is of the correct type.
 	if sentence.DataType() == nmea.TypeRMC {
-		rmc := sentence.(nmea.RMC).String() + "\n"
+		rmc := sentence.(nmea.RMC).String()
 
 		n, err := conn.Write([]byte(rmc))
 		if err != nil && n != 0 {
