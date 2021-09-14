@@ -9,6 +9,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"strings"
 	"sync"
 	"time"
 
@@ -62,7 +63,7 @@ func (s *server) Run() {
 	go func() {
 		for {
 			conn, err := nl.Accept()
-			if err != nil {
+			if err != nil && !strings.Contains(err.Error(), "use of closed network connection") {
 				log.Printf("error: conn.Accept failed: %v\n", err)
 			}
 			go func() {
