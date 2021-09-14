@@ -12,8 +12,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/adrianmo/go-nmea"
 )
 
 type server struct {
@@ -222,17 +220,10 @@ func (s *server) readFile(ctx context.Context) error {
 		case <-ticker.C:
 			// Check if there are more to scan
 			for scanner.Scan() {
-				sentence, err := nmea.Parse(scanner.Text())
-				if err != nil {
-					return fmt.Errorf("error: failed to parse nmea sentence: %v", err)
-				}
-
-				if sentence.DataType() == nmea.TypeRMC {
-					rmc := sentence.(nmea.RMC).String()
-					s.nmeaReadCh <- rmc
-					fmt.Printf("* rmc: %v\n", rmc)
-					break
-				}
+				line := scanner.Text()
+				s.nmeaReadCh <- line + "\n"
+				fmt.Printf("* read: %v\n", line)
+				break
 
 			}
 		case <-ctx.Done():
