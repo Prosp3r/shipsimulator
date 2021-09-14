@@ -16,6 +16,8 @@ func main() {
 	loop := flag.Bool("loop", false, "loop over again, and again, and again, and again,...........")
 	flag.Parse()
 
-	nmea.Run(*file, *address, *delay, *loop)
+	s := nmea.NewServer(*file, *address, *delay, *loop)
+
+	s.Run()
 
 }

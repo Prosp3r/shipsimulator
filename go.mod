@@ -3,7 +3,6 @@ module github.com/RaaLabs/shipsimulator
 go 1.15
 
 require (
-	github.com/adrianmo/go-nmea v1.3.0
 	github.com/eclipse/paho.mqtt.golang v1.2.0
 	github.com/goburrow/modbus v0.1.0
 	github.com/goburrow/serial v0.1.0
